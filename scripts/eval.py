@@ -20,7 +20,7 @@ def evaluate_model(results_df):
     y_true = results_df['label']
     y_scores = results_df['max_similarity']
     y_pred_youden = (y_scores >= youden_thresh).astype(int)
-    plot_confusion_matrix(y_true, y_pred_youden)
+    plot_confusion_matrix(y_true, y_pred_youden, youden_thresh)
     plt.show()
 
     # Best Accuracy threshold
