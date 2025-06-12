@@ -16,10 +16,10 @@ def evaluate_model(results_df):
 
     # Youden's J threshold
     youden_thresh = find_best_threshold_youden(fpr, tpr, thresholds)
-    y_pred_youden = (y_scores >= youden_thresh).astype(int)
 
     y_true = results_df['label']
     y_scores = results_df['max_similarity']
+    y_pred_youden = (y_scores >= youden_thresh).astype(int)
     plot_confusion_matrix(y_true, y_pred_youden)
     plt.show()
 
