@@ -141,3 +141,20 @@ def find_best_threshold_precision(y_true, y_scores, thresholds):
 
     print(f"Best Precision: {best_prec:.4f} at Threshold: {best_prec_threshold:.3f}")
     return best_prec, best_prec_threshold
+
+def find_threshold_min_fnr(y_true, y_scores, thresholds):
+    min_fnr = float('inf')
+    best_thresh = None
+    for thresh in thresholds:
+        y_pred = (y_scores >= thresh).astype(int)
+        cm = confusion_matrix(y_true, y_pred)
+        fn = cm[1, 0]
+        tp = cm[1, 1]
+        fnr = fn / (fn + tp + 1e-8)  # avoid division by zero
+        if fnr < min_fnr:
+            min_fnr = fnr
+            best_thresh = thresh
+            best_cm = cm
+    print("CM of lowest FNR: ", best_cm)
+    return best_thresh, min_fnr
+

@@ -1,4 +1,4 @@
-from utils.evals import plot_roc_curve, find_best_threshold_youden, plot_confusion_matrix, find_best_threshold_accuracy
+from utils.evals import find_threshold_min_fnr, plot_roc_curve, find_best_threshold_youden, plot_confusion_matrix, find_best_threshold_accuracy
 
 def evaluate_model(results_df):
     """
@@ -14,6 +14,9 @@ def evaluate_model(results_df):
 
     # Youden's J threshold
     youden_thresh = find_best_threshold_youden(fpr, tpr, thresholds)
+
+    fnr_thresh, fnr_val = find_threshold_min_fnr(y_true, y_scores, thresholds)
+
 
     y_true = results_df['label']
     y_scores = results_df['max_similarity']
