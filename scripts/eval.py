@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from utils.evals import plot_roc_curve, find_best_threshold_youden, plot_confusion_matrix, find_best_threshold_accuracy
 
 def evaluate_model(results_df):
@@ -11,13 +12,16 @@ def evaluate_model(results_df):
     # ROC & AUC
     roc_auc, fpr, tpr, thresholds = plot_roc_curve(results_df)
     print(f"AUC: {roc_auc:.4f}")
+    plt.show()
 
     # Youden's J threshold
     youden_thresh = find_best_threshold_youden(fpr, tpr, thresholds)
+    y_pred_youden = (y_scores >= youden_thresh).astype(int)
 
     y_true = results_df['label']
     y_scores = results_df['max_similarity']
-    plot_confusion_matrix(y_true, y_scores, youden_thresh)
+    plot_confusion_matrix(y_true, y_pred_youden)
+    plt.show()
 
     # Best Accuracy threshold
     best_acc, best_acc_thresh = find_best_threshold_accuracy(y_true, y_scores, thresholds)
