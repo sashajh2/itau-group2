@@ -4,7 +4,8 @@ import torch
 from torch.utils.data import DataLoader
 import pandas as pd
 from datetime import datetime
-from sklearn.metrics import roc_curve, accuracy_score
+from sklearn.metrics import roc_curve, accuracy_score, auc, confusion_matrix, ConfusionMatrixDisplay, precision_score
+import matplotlib.pyplot as plt
 
 from utils.loss import CosineLoss, EuclideanLoss, CosineTripletLoss, EuclideanTripletLoss, HybridTripletLoss
 from utils.data import TextPairDataset, TripletDataset
