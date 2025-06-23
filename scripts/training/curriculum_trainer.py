@@ -77,6 +77,24 @@ class CurriculumTrainer:
                 loss = self.criterion(*outputs)
             elif mode == "supcon":
                 anchor, positives, negatives, indices = batch
+                # For SupCon, ensure data is in correct format
+                # anchor: list of strings (batch_size)
+                # positives: list of lists of strings (batch_size, n_positives)
+                # negatives: list of lists of strings (batch_size, n_negatives)
+                
+                # Convert tuples to lists if needed
+                if isinstance(anchor, tuple):
+                    anchor = list(anchor)
+                if isinstance(positives, tuple):
+                    positives = list(positives)
+                if isinstance(negatives, tuple):
+                    negatives = list(negatives)
+                
+                print(f"DEBUG - After tuple->list:")
+                print(f"  anchor: {anchor}")
+                print(f"  positives: {positives}")
+                print(f"  negatives: {negatives}")
+                
                 outputs = self.model(anchor, positives, negatives)
                 loss = self.criterion(*outputs)
             elif mode == "infonce":
