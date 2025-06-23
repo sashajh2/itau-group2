@@ -64,6 +64,7 @@ class CurriculumTrainer:
         # Set epoch for curriculum
         curriculum_loader.set_epoch(self.current_epoch)
         
+        # Iterate through batches
         for i, batch in enumerate(curriculum_loader):
             # Extract data and indices
             if mode == "pair":
@@ -227,25 +228,27 @@ class CurriculumTrainer:
         curriculum_types = ["manual", "self_paced", "bandit"]
         results = {}
         
+        # Save initial model and optimizer state before any training
+        initial_model_state = self.model.state_dict().copy()
+        initial_optimizer_state = self.optimizer.state_dict().copy()
+        
         for curriculum_type in curriculum_types:
             print(f"\n=== Training with {curriculum_type} curriculum ===")
             
-            # Reset model and optimizer for fair comparison
-            self.model.load_state_dict(torch.load('initial_model_state.pth') if hasattr(self, 'initial_state') else {})
-            self.optimizer.load_state_dict(torch.load('initial_optimizer_state.pth') if hasattr(self, 'initial_optimizer_state') else {})
-            
-            # Save initial state if not saved
-            if not hasattr(self, 'initial_state'):
-                torch.save(self.model.state_dict(), 'initial_model_state.pth')
-                torch.save(self.optimizer.state_dict(), 'initial_optimizer_state.pth')
-                self.initial_state = True
-                self.initial_optimizer_state = True
+            # Reset model and optimizer to initial state for fair comparison
+            self.model.load_state_dict(initial_model_state)
+            self.optimizer.load_state_dict(initial_optimizer_state)
             
             # Train with current curriculum
             best_loss, best_metrics = self.train_with_curriculum(
-                reference_filepath, test_reference_filepath, test_filepath,
-                mode=mode, curriculum_type=curriculum_type, epochs=epochs,
-                batch_size=batch_size, **curriculum_params
+                reference_filepath=reference_filepath,
+                test_reference_filepath=test_reference_filepath,
+                test_filepath=test_filepath,
+                mode=mode,
+                curriculum_type=curriculum_type,
+                epochs=epochs,
+                batch_size=batch_size,
+                **curriculum_params
             )
             
             results[curriculum_type] = {

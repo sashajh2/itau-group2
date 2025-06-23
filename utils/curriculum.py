@@ -321,13 +321,20 @@ class CurriculumDataLoader:
         self.batch_size = batch_size
         self.mode = mode
         self.current_epoch = 0
+        self.current_batch = 0
+        self.total_batches = len(dataset) // batch_size + (1 if len(dataset) % batch_size != 0 else 0)
         
     def __iter__(self):
+        self.current_batch = 0
         return self
     
     def __next__(self):
         """Get next batch using curriculum strategy."""
+        if self.current_batch >= self.total_batches:
+            raise StopIteration
+            
         batch_data, indices = self.curriculum.get_curriculum_batch(self.batch_size, self.current_epoch)
+        self.current_batch += 1
         
         # Convert to tensors based on mode
         if self.mode == "pair":
@@ -352,3 +359,7 @@ class CurriculumDataLoader:
     def set_epoch(self, epoch):
         """Set current epoch for curriculum."""
         self.current_epoch = epoch
+    
+    def __len__(self):
+        """Return number of batches per epoch."""
+        return self.total_batches
