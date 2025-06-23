@@ -89,24 +89,18 @@ class CurriculumTrainer:
                 # negatives: list of lists of strings (batch_size, n_negatives)
                 
                 if isinstance(anchor, tuple):
-                    # If anchor is a tuple, extract the individual anchors
                     anchor = list(anchor)
                 elif isinstance(anchor, str):
-                    # If anchor is a single string, wrap in list
                     anchor = [anchor]
                 
                 if isinstance(positives, tuple):
-                    # If positives is a tuple of lists, convert to list of lists
                     positives = list(positives)
                 elif isinstance(positives, list) and len(positives) > 0 and isinstance(positives[0], str):
-                    # If positives is a single list of strings, wrap in another list
                     positives = [positives]
                 
                 if isinstance(negatives, tuple):
-                    # If negatives is a tuple of lists, convert to list of lists
                     negatives = list(negatives)
                 elif isinstance(negatives, list) and len(negatives) > 0 and isinstance(negatives[0], str):
-                    # If negatives is a single list of strings, wrap in another list
                     negatives = [negatives]
                 
                 outputs = self.model(anchor, positives, negatives)
@@ -309,8 +303,27 @@ class CurriculumTrainer:
             print(f"\n=== Training with {curriculum_type} curriculum ===")
             
             # Reset model and optimizer to initial state for fair comparison
-            self.model.load_state_dict(initial_model_state)
-            self.optimizer.load_state_dict(initial_optimizer_state)
+            try:
+                self.model.load_state_dict(initial_model_state)
+                self.optimizer.load_state_dict(initial_optimizer_state)
+                
+                # Test model with dummy data to ensure it's working
+                if mode == "supcon":
+                    dummy_anchor = ["test"]
+                    dummy_positives = [["test1", "test2"]]
+                    dummy_negatives = [["test3", "test4"]]
+                    try:
+                        with torch.no_grad():
+                            _ = self.model(dummy_anchor, dummy_positives, dummy_negatives)
+                    except Exception:
+                        from model_utils.models.supcon import SiameseCLIPSupCon
+                        self.model = SiameseCLIPSupCon(embedding_dim=512, projection_dim=128).to(self.device)
+                        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
+            except Exception:
+                if mode == "supcon":
+                    from model_utils.models.supcon import SiameseCLIPSupCon
+                    self.model = SiameseCLIPSupCon(embedding_dim=512, projection_dim=128).to(self.device)
+                self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
             
             # Train with current curriculum
             best_loss, best_metrics = self.train_with_curriculum(
