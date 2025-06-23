@@ -33,12 +33,92 @@ class SupConDataset(Dataset):
         Each anchor should have exactly 3 positives and 3 negatives.
         
         Args:
-            dataframe: DataFrame with columns 'fraud_name' (anchor), 'real_name' (list of positives),
-                      'negative_name' (list of negatives)
+            dataframe: DataFrame with columns for anchor, positives, and negatives
         """
-        self.anchor_data = dataframe['real_name'].tolist()
-        self.positive_data = dataframe['positive_names'].tolist()  # Should be list of lists
-        self.negative_data = dataframe['negative_names'].tolist()  # Should be list of lists
+        # Check available columns and use appropriate ones
+        available_columns = list(dataframe.columns)
+        
+        # Handle different data formats
+        if 'fraud_name' in available_columns and 'real_name' in available_columns:
+            # This is fraud_triplets.pkl format - convert to SupCon format
+            
+            # Group by fraud_name to get multiple positives and negatives
+            grouped = dataframe.groupby('fraud_name').agg({
+                'real_name': list,
+                'negative_name': list
+            }).reset_index()
+            
+            self.anchor_data = grouped['fraud_name'].tolist()
+            self.positive_data = grouped['real_name'].tolist()
+            self.negative_data = grouped['negative_name'].tolist()
+            
+        elif 'anchor_name' in available_columns and 'positive_names' in available_columns:
+            # This is supcon_triplets.pkl format with correct column names
+            self.anchor_data = dataframe['anchor_name'].tolist()
+            self.positive_data = dataframe['positive_names'].tolist()
+            self.negative_data = dataframe['negative_names'].tolist()
+            
+        elif 'real_name' in available_columns and 'positive_names' in available_columns:
+            # This is supcon_triplets.pkl format (alternative column names)
+            self.anchor_data = dataframe['real_name'].tolist()
+            self.positive_data = dataframe['positive_names'].tolist()
+            self.negative_data = dataframe['negative_names'].tolist()
+            
+        elif 'name1' in available_columns and 'name2' in available_columns:
+            # This is merged_data.pkl format - convert to SupCon format
+            
+            # Group by name1 to get multiple positives
+            grouped = dataframe.groupby('name1').agg({
+                'name2': list
+            }).reset_index()
+            
+            self.anchor_data = grouped['name1'].tolist()
+            self.positive_data = grouped['name2'].tolist()
+            
+            # Create negatives from other names
+            all_names = set()
+            for names in self.positive_data:
+                all_names.update(names)
+            
+            self.negative_data = []
+            for anchor in self.anchor_data:
+                negatives = list(all_names - set([anchor]))
+                self.negative_data.append(negatives[:7])  # Take first 7 negatives
+                
+        else:
+            # Try different possible column names for anchor
+            anchor_col = None
+            for col in ['anchor_name', 'real_name', 'anchor_name', 'fraud_name', 'name1', 'anchor']:
+                if col in available_columns:
+                    anchor_col = col
+                    break
+            
+            if anchor_col is None:
+                raise ValueError(f"Could not find anchor column. Available columns: {available_columns}")
+            
+            # Try different possible column names for positives
+            positive_col = None
+            for col in ['positive_names', 'real_name', 'positive_name', 'name2', 'positives']:
+                if col in available_columns:
+                    positive_col = col
+                    break
+            
+            if positive_col is None:
+                raise ValueError(f"Could not find positive column. Available columns: {available_columns}")
+            
+            # Try different possible column names for negatives
+            negative_col = None
+            for col in ['negative_names', 'negative_name', 'negatives']:
+                if col in available_columns:
+                    negative_col = col
+                    break
+            
+            if negative_col is None:
+                raise ValueError(f"Could not find negative column. Available columns: {available_columns}")
+            
+            self.anchor_data = dataframe[anchor_col].tolist()
+            self.positive_data = dataframe[positive_col].tolist()
+            self.negative_data = dataframe[negative_col].tolist()
 
     def __len__(self):
         return len(self.anchor_data)
