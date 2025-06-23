@@ -103,7 +103,33 @@ class CurriculumTrainer:
                 elif isinstance(negatives, list) and len(negatives) > 0 and isinstance(negatives[0], str):
                     negatives = [negatives]
                 
-                outputs = self.model(anchor, positives, negatives)
+                # Ensure fixed sizes for all items in batch
+                processed_positives = []
+                processed_negatives = []
+                
+                for i, (pos_list, neg_list) in enumerate(zip(positives, negatives)):
+                    # Ensure exactly 3 positives
+                    if len(pos_list) > 3:
+                        pos_list = pos_list[:3]
+                    elif len(pos_list) < 3:
+                        if len(pos_list) > 0:
+                            pos_list = pos_list + [pos_list[0]] * (3 - len(pos_list))
+                        else:
+                            pos_list = [anchor[i]] * 3
+                    
+                    # Ensure exactly 7 negatives
+                    if len(neg_list) > 7:
+                        neg_list = neg_list[:7]
+                    elif len(neg_list) < 7:
+                        if len(neg_list) > 0:
+                            neg_list = neg_list + [neg_list[0]] * (7 - len(neg_list))
+                        else:
+                            neg_list = [anchor[i]] * 7
+                    
+                    processed_positives.append(pos_list)
+                    processed_negatives.append(neg_list)
+                
+                outputs = self.model(anchor, processed_positives, processed_negatives)
                 loss = self.criterion(*outputs)
             elif mode == "infonce":
                 anchor, positive, negatives, indices = batch
