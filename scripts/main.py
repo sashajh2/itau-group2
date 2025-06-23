@@ -2,6 +2,7 @@ import argparse
 import ast
 import torch
 from scripts.training.trainer import Trainer
+from scripts.training.curriculum_trainer import CurriculumTrainer
 from scripts.evaluation.evaluator import Evaluator
 from scripts.grid_search.grid_searcher import GridSearcher
 from scripts.baseline.baseline_tester import BaselineTester
@@ -13,9 +14,9 @@ from model_utils.models.infonce import SiameseCLIPInfoNCE
 def main():
     parser = argparse.ArgumentParser(description='CLIP-based text similarity training and evaluation')
     parser.add_argument('--mode', type=str, 
-                      choices=['train', 'grid_search', 'bayesian', 'random', 'optuna', 'pbt', 'compare', 'baseline'], 
+                      choices=['train', 'grid_search', 'bayesian', 'random', 'optuna', 'pbt', 'compare', 'baseline', 'curriculum', 'curriculum_compare'], 
                       required=True,
-                      help='Mode to run: train, grid_search, bayesian, random, optuna, pbt, compare, or baseline')
+                      help='Mode to run: train, grid_search, bayesian, random, optuna, pbt, compare, baseline, curriculum, or curriculum_compare')
     parser.add_argument('--reference_filepath', type=str, required=True,
                       help='Path to reference data')
     parser.add_argument('--test_reference_filepath', type=str, required=True,
@@ -28,6 +29,20 @@ def main():
                       help='Loss function type')
     parser.add_argument('--warmup_filepath', type=str,
                       help='Path to warmup data (optional)')
+    
+    # Curriculum learning parameters
+    parser.add_argument('--curriculum_type', type=str, choices=['manual', 'self_paced', 'bandit'], default='manual',
+                      help='Curriculum learning type: manual, self_paced, or bandit')
+    parser.add_argument('--lambda_param', type=float, default=1.0,
+                      help='Lambda parameter for self-paced learning (default: 1.0)')
+    parser.add_argument('--alpha', type=float, default=0.1,
+                      help='Alpha parameter for self-paced learning (default: 0.1)')
+    parser.add_argument('--exploration_rate', type=float, default=0.1,
+                      help='Exploration rate for bandit curriculum (default: 0.1)')
+    parser.add_argument('--window_size', type=int, default=100,
+                      help='Window size for bandit curriculum (default: 100)')
+    parser.add_argument('--difficulty_thresholds', type=str, default='[0.2, 0.4, 0.6, 0.8, 1.0]',
+                      help='Difficulty thresholds for manual curriculum (default: [0.2, 0.4, 0.6, 0.8, 1.0])')
     
     # Grid search parameters
     parser.add_argument('--lrs', type=str, default='[1e-4]',
@@ -136,6 +151,140 @@ def main():
             warmup_loader=None,  # You'll need to create appropriate dataloader
             warmup_epochs=args.warmup_epochs
         )
+
+    elif args.mode == 'curriculum':
+        # Curriculum learning training
+        if args.model_type == 'pair':
+            model_class = SiameseCLIPModelPairs
+        elif args.model_type == 'triplet':
+            model_class = SiameseCLIPTriplet
+        elif args.model_type == 'supcon':
+            model_class = SiameseCLIPSupCon
+        else:  # infonce
+            model_class = SiameseCLIPInfoNCE
+            
+        model = model_class(embedding_dim=512, projection_dim=128).to(device)
+        
+        # Get appropriate loss class
+        if args.model_type == 'pair':
+            if args.loss_type == 'cosine':
+                from model_utils.loss.pair_losses import CosineLoss
+                criterion = CosineLoss(margin=0.5)
+            else:
+                from model_utils.loss.pair_losses import EuclideanLoss
+                criterion = EuclideanLoss(margin=1.0)
+        elif args.model_type == 'triplet':
+            if args.loss_type == 'cosine':
+                from model_utils.loss.triplet_losses import CosineTripletLoss
+                criterion = CosineTripletLoss(margin=0.1)
+            elif args.loss_type == 'euclidean':
+                from model_utils.loss.triplet_losses import EuclideanTripletLoss
+                criterion = EuclideanTripletLoss(margin=1.0)
+            elif args.loss_type == 'hybrid':
+                from model_utils.loss.triplet_losses import HybridTripletLoss
+                criterion = HybridTripletLoss(margin=1.0, alpha=0.5)
+        elif args.model_type == 'supcon':
+            if args.loss_type == 'supcon':
+                from model_utils.loss.supcon_loss import SupConLoss
+                criterion = SupConLoss(temperature=args.temperature)
+            elif args.loss_type == 'infonce':
+                from model_utils.loss.infonce_loss import InfoNCELoss
+                criterion = InfoNCELoss(temperature=args.temperature)
+        else:  # infonce
+            from model_utils.loss.infonce_loss import InfoNCELoss
+            criterion = InfoNCELoss(temperature=args.temperature)
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        
+        # Prepare curriculum parameters
+        curriculum_params = {}
+        if args.curriculum_type == 'manual':
+            curriculum_params['difficulty_thresholds'] = ast.literal_eval(args.difficulty_thresholds)
+        elif args.curriculum_type == 'self_paced':
+            curriculum_params['lambda_param'] = args.lambda_param
+            curriculum_params['alpha'] = args.alpha
+        elif args.curriculum_type == 'bandit':
+            curriculum_params['exploration_rate'] = args.exploration_rate
+            curriculum_params['window_size'] = args.window_size
+        
+        trainer = CurriculumTrainer(model, criterion, optimizer, device, 
+                                  log_csv_path=f"{args.log_dir}/curriculum_{args.curriculum_type}_log.csv")
+        
+        best_loss, best_metrics = trainer.train_with_curriculum(
+            reference_filepath=args.reference_filepath,
+            test_reference_filepath=args.test_reference_filepath,
+            test_filepath=args.test_filepath,
+            mode=args.model_type,
+            curriculum_type=args.curriculum_type,
+            epochs=args.epochs,
+            batch_size=32,
+            warmup_filepath=args.warmup_filepath,
+            warmup_epochs=args.warmup_epochs,
+            **curriculum_params
+        )
+        
+        print(f"\nCurriculum Training Results ({args.curriculum_type}):")
+        print(f"Best Loss: {best_loss:.4f}")
+        for metric, value in best_metrics.items():
+            print(f"Best {metric.capitalize()}: {value:.4f}")
+
+    elif args.mode == 'curriculum_compare':
+        # Compare different curriculum methods
+        if args.model_type == 'pair':
+            model_class = SiameseCLIPModelPairs
+        elif args.model_type == 'triplet':
+            model_class = SiameseCLIPTriplet
+        elif args.model_type == 'supcon':
+            model_class = SiameseCLIPSupCon
+        else:  # infonce
+            model_class = SiameseCLIPInfoNCE
+            
+        model = model_class(embedding_dim=512, projection_dim=128).to(device)
+        
+        # Get appropriate loss class
+        if args.model_type == 'pair':
+            if args.loss_type == 'cosine':
+                from model_utils.loss.pair_losses import CosineLoss
+                criterion = CosineLoss(margin=0.5)
+            else:
+                from model_utils.loss.pair_losses import EuclideanLoss
+                criterion = EuclideanLoss(margin=1.0)
+        elif args.model_type == 'triplet':
+            if args.loss_type == 'cosine':
+                from model_utils.loss.triplet_losses import CosineTripletLoss
+                criterion = CosineTripletLoss(margin=0.1)
+            elif args.loss_type == 'euclidean':
+                from model_utils.loss.triplet_losses import EuclideanTripletLoss
+                criterion = EuclideanTripletLoss(margin=1.0)
+            elif args.loss_type == 'hybrid':
+                from model_utils.loss.triplet_losses import HybridTripletLoss
+                criterion = HybridTripletLoss(margin=1.0, alpha=0.5)
+        elif args.model_type == 'supcon':
+            if args.loss_type == 'supcon':
+                from model_utils.loss.supcon_loss import SupConLoss
+                criterion = SupConLoss(temperature=args.temperature)
+            elif args.loss_type == 'infonce':
+                from model_utils.loss.infonce_loss import InfoNCELoss
+                criterion = InfoNCELoss(temperature=args.temperature)
+        else:  # infonce
+            from model_utils.loss.infonce_loss import InfoNCELoss
+            criterion = InfoNCELoss(temperature=args.temperature)
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        
+        trainer = CurriculumTrainer(model, criterion, optimizer, device, 
+                                  log_csv_path=f"{args.log_dir}/curriculum_comparison_log.csv")
+        
+        results = trainer.compare_curriculum_methods(
+            reference_filepath=args.reference_filepath,
+            test_reference_filepath=args.test_reference_filepath,
+            test_filepath=args.test_filepath,
+            mode=args.model_type,
+            epochs=args.epochs,
+            batch_size=32
+        )
+        
+        print(f"\nCurriculum comparison results saved to: {args.log_dir}")
 
     elif args.mode == 'grid_search':
         # Grid search
