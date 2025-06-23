@@ -124,14 +124,32 @@ class SupConDataset(Dataset):
         return len(self.anchor_data)
 
     def __getitem__(self, idx):
-        """Returns anchor, exactly 3 positives and 3 negatives"""
+        """Returns anchor, exactly 3 positives and 7 negatives"""
         anchor = self.anchor_data[idx]
         positives = self.positive_data[idx]
-        negatives = self.negative_data[idx][:7]
+        negatives = self.negative_data[idx]
         
-        # Pad negatives
-        if len(negatives) < 7:
-            negatives = negatives + [negatives[0]] * (7 - len(negatives))
+        # Ensure exactly 3 positives
+        if len(positives) > 3:
+            positives = positives[:3]
+        elif len(positives) < 3:
+            # Pad with the first positive if we have fewer than 3
+            if len(positives) > 0:
+                positives = positives + [positives[0]] * (3 - len(positives))
+            else:
+                # If no positives, use the anchor as positive
+                positives = [anchor] * 3
+        
+        # Ensure exactly 7 negatives
+        if len(negatives) > 7:
+            negatives = negatives[:7]
+        elif len(negatives) < 7:
+            # Pad with the first negative if we have fewer than 7
+            if len(negatives) > 0:
+                negatives = negatives + [negatives[0]] * (7 - len(negatives))
+            else:
+                # If no negatives, use the anchor as negative (fallback)
+                negatives = [anchor] * 7
             
         return anchor, positives, negatives
 
