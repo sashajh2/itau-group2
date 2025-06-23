@@ -77,23 +77,37 @@ class CurriculumTrainer:
                 loss = self.criterion(*outputs)
             elif mode == "supcon":
                 anchor, positives, negatives, indices = batch
-                # For SupCon, ensure data is in correct format
+                # For SupCon, data format is: (anchor, [list of positives], [list of negatives])
+                # where each batch item is a tuple with:
+                # - anchor: string
+                # - positives: list of strings
+                # - negatives: list of strings
+                
+                # Convert to the format expected by the model:
                 # anchor: list of strings (batch_size)
                 # positives: list of lists of strings (batch_size, n_positives)
                 # negatives: list of lists of strings (batch_size, n_negatives)
                 
-                # Convert tuples to lists if needed
                 if isinstance(anchor, tuple):
+                    # If anchor is a tuple, extract the individual anchors
                     anchor = list(anchor)
-                if isinstance(positives, tuple):
-                    positives = list(positives)
-                if isinstance(negatives, tuple):
-                    negatives = list(negatives)
+                elif isinstance(anchor, str):
+                    # If anchor is a single string, wrap in list
+                    anchor = [anchor]
                 
-                print(f"DEBUG - After tuple->list:")
-                print(f"  anchor: {anchor}")
-                print(f"  positives: {positives}")
-                print(f"  negatives: {negatives}")
+                if isinstance(positives, tuple):
+                    # If positives is a tuple of lists, convert to list of lists
+                    positives = list(positives)
+                elif isinstance(positives, list) and len(positives) > 0 and isinstance(positives[0], str):
+                    # If positives is a single list of strings, wrap in another list
+                    positives = [positives]
+                
+                if isinstance(negatives, tuple):
+                    # If negatives is a tuple of lists, convert to list of lists
+                    negatives = list(negatives)
+                elif isinstance(negatives, list) and len(negatives) > 0 and isinstance(negatives[0], str):
+                    # If negatives is a single list of strings, wrap in another list
+                    negatives = [negatives]
                 
                 outputs = self.model(anchor, positives, negatives)
                 loss = self.criterion(*outputs)
