@@ -34,6 +34,8 @@ def main():
                       help='Batch size for processing')
     parser.add_argument('--warmup_filepath', type=str,
                       help='Path to warmup data (optional)')
+    parser.add_argument('--external', action='store_true', default=False,
+                      help='If set, evaluate on an external pairwise dataset (no reference set, only test_filepath required)')
     
     # Grid search parameters
     parser.add_argument('--lrs', type=str, default='[1e-4]',
@@ -108,7 +110,7 @@ def main():
             # Test all available models
             print("Testing all available baseline models...")
             tester = BaselineTester(model_type='clip', batch_size=args.batch_size, device=device)
-            all_results = tester.test_all_models(args.test_reference_filepath, args.test_filepath)
+            all_results = tester.test_all_models(args.test_reference_filepath, args.test_filepath, external=args.external)
             
             print("\nBaseline Results Summary:")
             for model_type, result in all_results.items():
@@ -120,12 +122,14 @@ def main():
                           f"Precision={metrics['precision']:.4f}, Recall={metrics['recall']:.4f}, "
                           f"ROC AUC={metrics['roc_auc']:.4f}")
         else:
-            # Test single model
+            # Test single model (external logic handled in BaselineTester)
             print(f"Testing {args.baseline_model.upper()} baseline model...")
             tester = BaselineTester(model_type=args.baseline_model, batch_size=args.batch_size, device=device)
-            results_df, metrics = tester.test(args.test_reference_filepath, args.test_filepath)
-            
-            print(f"\n{args.baseline_model.upper()} Baseline Results:")
+            results_df, metrics = tester.test(args.test_reference_filepath, args.test_filepath, external=args.external)
+            if args.external:
+                print(f"\n{args.baseline_model.upper()} Baseline Results (External):")
+            else:
+                print(f"\n{args.baseline_model.upper()} Baseline Results:")
             print(f"Accuracy: {metrics['accuracy']:.4f}")
             print(f"Precision: {metrics['precision']:.4f}")
             print(f"Recall: {metrics['recall']:.4f}")
