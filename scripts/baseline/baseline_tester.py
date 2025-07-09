@@ -315,7 +315,7 @@ class BaselineTester:
         real_embs = torch.cat(real_embs, dim=0)
 
         # Cosine similarity for each pair
-        similarities = torch.nn.functional.cosine_similarity(fraud_embs, real_embs, dim=1).numpy()
+        similarities = torch.nn.functional.cosine_similarity(fraud_embs, real_embs, dim=1).cpu().numpy()
 
         # Build results DataFrame
         results_df = pd.DataFrame({
