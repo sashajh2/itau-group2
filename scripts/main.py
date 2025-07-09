@@ -16,9 +16,9 @@ def main():
                       choices=['train', 'grid_search', 'bayesian', 'random', 'optuna', 'pbt', 'compare', 'baseline'], 
                       required=True,
                       help='Mode to run: train, grid_search, bayesian, random, optuna, pbt, compare, or baseline (supports multiple vision-language models)')
-    parser.add_argument('--reference_filepath', type=str, required=True,
+    parser.add_argument('--reference_filepath', type=str,
                       help='Path to reference data')
-    parser.add_argument('--test_reference_filepath', type=str, required=True,
+    parser.add_argument('--test_reference_filepath', type=str,
                       help='Path to test reference data')
     parser.add_argument('--test_filepath', type=str, required=True,
                       help='Path to test data')
@@ -105,6 +105,10 @@ def main():
             raise ValueError(f"Unknown mode: {mode}")
 
     if args.mode == 'baseline':
+        # Check required arguments for non-external mode
+        if not args.external:
+            if not args.reference_filepath or not args.test_reference_filepath:
+                parser.error('--reference_filepath and --test_reference_filepath are required unless --external is set')
         # Test baseline model(s) performance
         if args.baseline_model == 'all':
             # Test all available models
