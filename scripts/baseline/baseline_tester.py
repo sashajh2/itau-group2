@@ -283,25 +283,21 @@ class BaselineTester:
         """
         Evaluate on an external dataset of name pairs (no reference set).
         Args:
-            test_filepath: Path to a pickle file with columns ['fraudulent_name', 'real_name', 'label']
+            test_filepath: Path to a CSV file with columns ['fraudulent_name', 'real_name', 'label']
         Returns:
             tuple: (results_df, metrics)
         """
         import pandas as pd
         import torch
-        import pickle
         import numpy as np
         from sklearn.metrics import roc_curve, precision_score, recall_score, accuracy_score, roc_auc_score
         from utils.evals import find_best_threshold_youden
 
-        # Load data
-        if test_filepath.endswith('.pkl'):
-            with open(test_filepath, 'rb') as f:
-                df = pickle.load(f)
-            if not isinstance(df, pd.DataFrame):
-                df = pd.DataFrame(df)
+        # Load data (CSV only)
+        if test_filepath.endswith('.csv'):
+            df = pd.read_csv(test_filepath)
         else:
-            raise ValueError("Only pickle (.pkl) files are supported for external evaluation.")
+            raise ValueError("Only CSV (.csv) files are supported for external evaluation.")
 
         # Extract columns
         fraud_names = df['fraudulent_name'].astype(str).tolist()
