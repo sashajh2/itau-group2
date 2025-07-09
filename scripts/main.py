@@ -105,6 +105,7 @@ def main():
             raise ValueError(f"Unknown mode: {mode}")
 
     if args.mode == 'baseline':
+        from scripts.baseline.baseline_tester import BaselineTester
         # Check required arguments for non-external mode
         if not args.external:
             if not args.reference_filepath or not args.test_reference_filepath:
