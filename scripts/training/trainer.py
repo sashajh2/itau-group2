@@ -3,38 +3,13 @@ import csv
 from sklearn.metrics import precision_score, recall_score, roc_curve
 from utils.evals import find_best_threshold_youden
 from scripts.evaluation.evaluator import Evaluator
-from torch.utils.data import DataLoader, Subset, ConcatDataset
+from torch.utils.data import DataLoader, Subset, ConcatDataset, 
 import numpy as np
 import random
 from model_utils.loss.supcon_loss import SupConLoss
 from model_utils.loss.infonce_loss import InfoNCELoss
+from utils.curriculum import get_curriculum_ratios
 
-def get_curriculum_ratios(epoch, total_epochs):
-    """
-    Return (easy, medium, hard) ratios for self-paced curriculum learning.
-
-    Args:
-        epoch (int): Current training epoch.
-        total_epochs (int): Total number of training epochs.
-
-    Returns:
-        dict: A dictionary with keys 'easy', 'medium', 'hard' and corresponding float ratios.
-    """
-    # Normalize the current epoch to [0, 1]
-    t = epoch / total_epochs
-
-    # Use smooth cosine interpolation to define the curves
-    easy = 0.5 * (1 + np.cos(np.pi * t)) * (1 - t)
-    hard = 0.5 * (1 + np.cos(np.pi * (1 - t))) * t
-    medium = 1.0 - (easy + hard)
-
-    # Normalize to ensure they sum to 1
-    total = easy + medium + hard
-    return {
-        "easy": easy / total,
-        "medium": medium / total,
-        "hard": hard / total
-    }
 
 class Trainer:
     """
@@ -50,10 +25,13 @@ class Trainer:
         self.model.to(device)
         self.evaluator = Evaluator(model)
 
-    def train_epoch(self, dataloader, mode="pair"):
+    def train_epoch(self, dataloader, track_pg = False):
         """Train for one epoch"""
         self.model.train()
         epoch_loss = 0.0
+
+        total_pg = 0
+        pg_count = 0
         
         for i, batch in enumerate(dataloader):
             # Unified logic: model and criterion handle all modes
@@ -63,12 +41,22 @@ class Trainer:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+
+            if track_pg:
+                with torch.no_grad():
+                    outputs_after = self.model(*batch)
+                    loss_after = self.criterion(*outputs_after)
+                    total_pg += (loss.item() - loss_after.item())
+                    pg_count += 1
+
             epoch_loss += loss.item()
 
             if i % 100 == 0:
                 print(f"Step {i} complete out of {len(dataloader)}")
 
-        return epoch_loss / len(dataloader)
+        avg_pg = total_pg/pg_count if track_pg and pg_count > 0 else None
+
+        return epoch_loss / len(dataloader), avg_pg
 
     def evaluate(self, test_reference_filepath, test_filepath):
         """Evaluate model on test set"""
@@ -78,7 +66,7 @@ class Trainer:
 
     # pass in curriculum learning parameter 
     def train(self, hard_loader, test_reference_filepath, test_filepath, 
-             mode="pair", epochs=30, medium_loader = None, easy_loader=None, warmup_epochs=5, curriculum = None):
+             mode="pair", epochs=30, medium_loader = None, easy_loader=None, curriculum = None):
         """
         Main training loop with optional warmup.
         
@@ -130,7 +118,7 @@ class Trainer:
 
                     # new ratios for three dataset
                     
-                    ratios = get_curriculum_ratios()
+                    ratios = get_curriculum_ratios(epoch, epochs)
 
                     total_samples = len(hard_loader.dataset)
                     easy_n = int(ratios["easy"] * total_samples)
@@ -155,7 +143,7 @@ class Trainer:
 
                     # exploration rate
                     epsilon = 0.1 
-                    reward_window = 5
+                    reward_window = 3
                     
                     avg_rewards = {
                         k: np.mean(v[-reward_window:]) if v else 0.0
@@ -168,22 +156,24 @@ class Trainer:
                     else:
                         chosen = max(avg_rewards, key=avg_rewards.get)
 
-                        current_loader = DataLoader(
-                            datasets[chosen], 
-                            batch_size=hard_loader.batch_size, 
-                            shuffle=True
-                            )
+                    current_loader = DataLoader(
+                        datasets[chosen], 
+                        batch_size=hard_loader.batch_size, 
+                        shuffle=True
+                        )
 
                 else:
-                    if epoch < warmup_epochs and easy_loader:
+                    phase_len = epochs // 3
+                    if epoch < phase_len and easy_loader:
                         current_loader = easy_loader
-                    elif epoch < warmup_epochs + 3:
+                    elif epoch < 2 * phase_len and medium_loader:
                         current_loader = medium_loader
                     else:
                         current_loader = hard_loader
 
+
                 # Train epoch
-                avg_loss = self.train_epoch(current_loader, mode)
+                avg_loss, avg_pg = self.train_epoch(current_loader, track_pg = (curriculum == "bandit"))
                 print(f"Epoch {epoch+1} Loss: {avg_loss:.4f}")
 
                 if avg_loss < best_epoch_loss:
@@ -192,11 +182,9 @@ class Trainer:
                 # Evaluate
                 metrics = self.evaluate(test_reference_filepath, test_filepath)
 
-                if curriculum == "bandit":
-                    delta_acc = metrics['accuracy'] - prev_accuracy
-                    prev_accuracy = metrics['accuracy']
-                    rewards[chosen].append(delta_acc)
-                
+                if curriculum == "bandit" and avg_pg is not None:
+                    rewards[chosen].append(avg_pg)
+
                 # Log metrics
                 writer.writerow([
                     epoch + 1, 
