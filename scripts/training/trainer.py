@@ -50,7 +50,7 @@ class Trainer:
         return metrics
 
     # pass in curriculum learning parameter 
-    def train(self, medium_laoder, hard_loader, test_reference_filepath, test_filepath, 
+    def train(self, medium_loader, hard_loader, test_reference_filepath, test_filepath, 
              mode="pair", epochs=30, warmup_loader=None, warmup_epochs=5, curriculum = None):
         """
         Main training loop with optional warmup.
@@ -71,7 +71,7 @@ class Trainer:
         datasets = {
             "easy": warmup_loader.dataset,
             "medium": medium_loader.dataset,
-            "hard": dataloader.dataset
+            "hard": hard_loader.dataset
         }
 
         # bandit learning tracking
@@ -189,7 +189,7 @@ class Trainer:
                 if curriculum == "bandit":
                     delta_acc = metrics['accuracy'] - prev_accuracy
                     prev_accuracy = metrics['accuracy']
-                    rewards[chosen_dataset_name].append(delta_acc)
+                    rewards[chosen].append(delta_acc)
                 
                 # Log metrics
                 writer.writerow([
