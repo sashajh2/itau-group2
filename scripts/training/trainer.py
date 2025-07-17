@@ -9,6 +9,33 @@ import random
 from model_utils.loss.supcon_loss import SupConLoss
 from model_utils.loss.infonce_loss import InfoNCELoss
 
+def get_curriculum_ratios(epoch, total_epochs):
+    """
+    Return (easy, medium, hard) ratios for self-paced curriculum learning.
+
+    Args:
+        epoch (int): Current training epoch.
+        total_epochs (int): Total number of training epochs.
+
+    Returns:
+        dict: A dictionary with keys 'easy', 'medium', 'hard' and corresponding float ratios.
+    """
+    # Normalize the current epoch to [0, 1]
+    t = epoch / total_epochs
+
+    # Use smooth cosine interpolation to define the curves
+    easy = 0.5 * (1 + np.cos(np.pi * t)) * (1 - t)
+    hard = 0.5 * (1 + np.cos(np.pi * (1 - t))) * t
+    medium = 1.0 - (easy + hard)
+
+    # Normalize to ensure they sum to 1
+    total = easy + medium + hard
+    return {
+        "easy": easy / total,
+        "medium": medium / total,
+        "hard": hard / total
+    }
+
 class Trainer:
     """
     Unified training interface for both pair and triplet models.
@@ -50,8 +77,8 @@ class Trainer:
         return metrics
 
     # pass in curriculum learning parameter 
-    def train(self, medium_loader, hard_loader, test_reference_filepath, test_filepath, 
-             mode="pair", epochs=30, warmup_loader=None, warmup_epochs=5, curriculum = None):
+    def train(self, hard_loader, test_reference_filepath, test_filepath, 
+             mode="pair", epochs=30, medium_loader = None, easy_loader=None, warmup_epochs=5, curriculum = None):
         """
         Main training loop with optional warmup.
         
@@ -69,7 +96,7 @@ class Trainer:
         """
         # bandit learning setup 
         datasets = {
-            "easy": warmup_loader.dataset,
+            "easy": easy_loader.dataset,
             "medium": medium_loader.dataset,
             "hard": hard_loader.dataset
         }
@@ -103,23 +130,19 @@ class Trainer:
 
                     # new ratios for three dataset
                     
-                    ratios = {
-                        "easy": max(0.0, 1.0 - 0.1 * epoch),     # decay easy
-                        "medium": min(0.5, 0.1 * epoch),         # increase medium
-                        "hard": min(0.4, 0.05 * epoch)           # slowly ramp hard
-                    }
+                    ratios = get_curriculum_ratios()
 
                     total_samples = len(hard_loader.dataset)
                     easy_n = int(ratios["easy"] * total_samples)
                     medium_n = int(ratios["medium"] * total_samples)
                     hard_n = int(ratios["hard"] * total_samples)
 
-                    easy_idx = np.random.choice(len(warmup_loader.dataset), easy_n, replace=False)
+                    easy_idx = np.random.choice(len(easy_loader.dataset), easy_n, replace=False)
                     med_idx = np.random.choice(len(medium_loader.dataset), medium_n, replace=False)
                     hard_idx = np.random.choice(len(hard_loader.dataset), hard_n, replace=False)
 
                     mixed_dataset = ConcatDataset([
-                        Subset(warmup_loader.dataset, easy_idx),
+                        Subset(easy_loader.dataset, easy_idx),
                         Subset(medium_loader.dataset, med_idx),
                         Subset(hard_loader.dataset, hard_idx)
                     ])
@@ -139,38 +162,21 @@ class Trainer:
                         for k, v in rewards.items()
                     }
 
-                     # Bandit curriculum learning
+                     # bandit curriculum learning
                     if random.random() < epsilon:
                         chosen = random.choice(list(datasets.keys()))
                     else:
                         chosen = max(avg_rewards, key=avg_rewards.get)
 
-                    batch_size = hard_loader.batch_size
-                    alloc = {
-                        "easy": batch_size // 3 if chosen == "easy" else 0,
-                        "medium": batch_size // 3 if chosen == "medium" else 0,
-                        "hard": batch_size if chosen == "hard" else batch_size // 3
-                    }
-                    remaining = batch_size - sum(alloc.values())
-                    alloc[chosen] += remaining  # fill up batch size
-
-                    sampled = {
-                        k: np.random.choice(len(datasets[k]), alloc[k], replace=False)
-                        for k in datasets
-                        if alloc[k] > 0
-                    }
-
-                    mixed_dataset = ConcatDataset([
-                        Subset(datasets[k], sampled[k]) for k in sampled
-                    ])
-
-                    current_loader = DataLoader(mixed_dataset, batch_size=batch_size, shuffle=True)
-                    print(f"Bandit (chose {chosen}) - batch alloc: {alloc}")
+                        current_loader = DataLoader(
+                            datasets[chosen], 
+                            batch_size=hard_loader.batch_size, 
+                            shuffle=True
+                            )
 
                 else:
-                    # === CHANGED: use warmup_loader (easy), medium_loader, or hard_loader ===
-                    if epoch < warmup_epochs and warmup_loader:
-                        current_loader = warmup_loader
+                    if epoch < warmup_epochs and easy_loader:
+                        current_loader = easy_loader
                     elif epoch < warmup_epochs + 3:
                         current_loader = medium_loader
                     else:
@@ -200,7 +206,7 @@ class Trainer:
                     metrics['recall'],
                     metrics.get('roc_auc', None)
                 ])
-
+                
                 print(f"Epoch {epoch+1} - Test Accuracy: {metrics['accuracy']:.4f} | "
                       f"Precision: {metrics['precision']:.4f} | "
                       f"Recall: {metrics['recall']:.4f} | "
@@ -224,3 +230,5 @@ class Trainer:
         best_metrics['loss'] = best_epoch_loss
 
         return best_metrics 
+    
+    
