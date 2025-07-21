@@ -32,8 +32,10 @@ def main():
                       help='Vision-language backbone to use (clip, siglip, flava, etc.)')
     parser.add_argument('--batch_size', type=int, default=32,
                       help='Batch size for processing')
-    parser.add_argument('--warmup_filepath', type=str,
-                      help='Path to warmup data (optional)')
+    parser.add_argument('--medium_filepath', type=str,
+                      help='Path to medium data (optional)')
+    parser.add_argument('--easy_filepath', type=str,
+                      help='easy to medium data (optional)')
     parser.add_argument('--external', action='store_true', default=False,
                       help='If set, evaluate on an external pairwise dataset (no reference set, only test_filepath required)')
     
@@ -50,8 +52,6 @@ def main():
     # Training parameters
     parser.add_argument('--epochs', type=int, default=5,
                       help='Number of training epochs')
-    parser.add_argument('--warmup_epochs', type=int, default=5,
-                      help='Number of warmup epochs')
     parser.add_argument('--curriculum', type=str, default=None,
                       help='Curriculum learning mode')
     parser.add_argument('--log_dir', type=str, default='/content/drive/MyDrive/Project_2_Business_Names/Summer 2025/code',
@@ -189,25 +189,32 @@ def main():
         dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
         
         # Create warmup dataloader if warmup filepath is provided
-        warmup_loader = None
-        if args.warmup_filepath:
-            warmup_dataframe = pd.read_parquet(args.warmup_filepath)
+        easy_loader = None
+        medium_loader = None
+        if args.easy_filepath and args.medium_filepath:
+            medium_dataframe = pd.read_parquet(args.medium_filepath)
+            easy_dataframe = pd.read_parquet(args.easy_filepath)
             if args.model_type == "pair":
                 from utils.data import TextPairDataset
-                warmup_dataset = TextPairDataset(warmup_dataframe)
+                medium_dataset = TextPairDataset(medium_dataframe)
+                easy_dataset = TextPairDataset(easy_dataframe)
             elif args.model_type == "triplet":
                 from utils.data import TripletDataset
-                warmup_dataset = TripletDataset(warmup_dataframe)
+                medium_dataset = TextPairDataset(medium_dataframe)
+                easy_dataset = TextPairDataset(easy_dataframe)
             elif args.model_type == "supcon":
                 from utils.data import SupConDataset
-                warmup_dataset = SupConDataset(warmup_dataframe)
+                medium_dataset = TextPairDataset(medium_dataframe)
+                easy_dataset = TextPairDataset(easy_dataframe)
             elif args.model_type == "infonce":
                 from utils.data import InfoNCEDataset
-                warmup_dataset = InfoNCEDataset(warmup_dataframe)
+                medium_dataset = TextPairDataset(medium_dataframe)
+                easy_dataset = TextPairDataset(easy_dataframe)
             else:
                 raise ValueError(f"Unknown model type: {args.model_type}")
             
-            warmup_loader = DataLoader(warmup_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
+            medium_loader = DataLoader(medium_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
+            easy_loader = DataLoader(easy_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
         
         ### here: pass in the model_type
         trainer = Trainer(model, criterion, optimizer, device, model_type=args.model_type)
@@ -217,8 +224,8 @@ def main():
             test_filepath=args.test_filepath,
             mode=args.model_type,
             epochs=args.epochs,
-            warmup_loader=warmup_loader,
-            warmup_epochs=args.warmup_epochs,
+            medium_loader=medium_loader,
+            easy_loader=easy_loader,
             curriculum=args.curriculum
         )
 
@@ -254,9 +261,9 @@ def main():
             internal_layer_sizes=internal_layer_sizes,
             mode=args.model_type,
             loss_type=args.loss_type,
-            warmup_filepath=args.warmup_filepath,
+            medium_filepath=args.medium_filepath,
+            easy_filepath=args.easy_filepath,
             epochs=args.epochs,
-            warmup_epochs=args.warmup_epochs,
             temperature=args.temperature,
             curriculum=args.curriculum
         )
@@ -282,7 +289,6 @@ def main():
             'pruner': args.pruner if args.pruner != 'none' else None,
             'study_name': args.study_name,
             'epochs': args.epochs,
-            'warmup_epochs': args.warmup_epochs
         }
         
         results = optimizer.optimize(
@@ -292,7 +298,8 @@ def main():
             test_filepath=args.test_filepath,
             mode=args.model_type,
             loss_type=args.loss_type,
-            warmup_filepath=args.warmup_filepath,
+            medium_filepath=args.medium_filepath,
+            easy_filepath=args.easy_filepath,
             **opt_params
         )
         
@@ -315,7 +322,6 @@ def main():
             'n_calls': args.n_calls,
             'n_random_starts': args.n_random_starts,
             'epochs': args.epochs,
-            'warmup_epochs': args.warmup_epochs,
             'sampler': args.sampler,
             'pruner': args.pruner if args.pruner != 'none' else None
         }
@@ -326,7 +332,8 @@ def main():
             test_filepath=args.test_filepath,
             mode=args.model_type,
             loss_type=args.loss_type,
-            warmup_filepath=args.warmup_filepath,
+            medium_filepath=args.medium_filepath,
+            easy_filepath=args.easy_filepath,
             **opt_params
         )
         

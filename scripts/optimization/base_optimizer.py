@@ -218,8 +218,8 @@ class BaseOptimizer:
         return self.sample_hyperparameters(mode, n_samples)
     
     def evaluate_trial(self, params, training_filepath, test_reference_filepath,
-                      test_filepath, mode, loss_type, warmup_filepath=None,
-                      epochs=5, warmup_epochs=5):
+                      test_filepath, mode, loss_type, medium_filepath=None, easy_filepath=None,
+                      epochs=5):
         """
         Evaluate a single hyperparameter configuration.
         
@@ -242,15 +242,19 @@ class BaseOptimizer:
             
             # Load data
             dataframe = pd.read_parquet(training_filepath)
-            warmup_dataframe = None
-            if warmup_filepath:
-                warmup_dataframe = pd.read_parquet(warmup_filepath)
+            medium_dataframe = None
+            easy_dataframe = None
+            if medium_filepath and easy_filepath:
+                medium_dataframe = pd.read_parquet(medium_filepath)
+                easy_dataframe = pd.read_parquet(easy_filepath)
             
             # Create dataloaders
             dataloader = self.create_dataloader(dataframe, batch_size, mode)
-            warmup_loader = None
-            if warmup_dataframe is not None:
-                warmup_loader = self.create_dataloader(warmup_dataframe, batch_size, mode)
+            medium_loader = None
+            easy_loader = None
+            if medium_dataframe is not None and easy_dataframe is not None:
+                medium_loader = self.create_dataloader(medium_dataframe, batch_size, mode)
+                easy_loader = self.create_dataloader(easy_dataframe, batch_size, mode)
             
             # Create model and optimizer
             model = self.create_siamese_model(mode, internal_layer_size).to(self.device)
@@ -286,8 +290,8 @@ class BaseOptimizer:
                 test_filepath=test_filepath,
                 mode=mode,
                 epochs=epochs,
-                warmup_loader=warmup_loader,
-                warmup_epochs=warmup_epochs
+                medium_loader = medium_loader,
+                easy_loader=easy_loader
             )
             
             # Log results

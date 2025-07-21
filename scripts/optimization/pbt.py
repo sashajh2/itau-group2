@@ -66,8 +66,8 @@ class PopulationBasedTrainer(BaseOptimizer):
         return new_params
     
     def train_population(self, population, training_filepath, test_reference_filepath, test_filepath,
-                        mode, loss_type, warmup_filepath=None, epochs_per_generation=5, 
-                        warmup_epochs=5, generations=10, evolution_frequency=2):
+                        mode, loss_type, medium_filepath=None, easy_filepath=None, epochs_per_generation=5, 
+                        generations=10, evolution_frequency=2):
         """
         Train the population with evolution.
         
@@ -78,9 +78,7 @@ class PopulationBasedTrainer(BaseOptimizer):
             test_filepath: Path to test data
             mode: Training mode
             loss_type: Loss function type
-            warmup_filepath: Optional warmup data path
             epochs_per_generation: Number of epochs per generation
-            warmup_epochs: Number of warmup epochs
             generations: Number of generations
             evolution_frequency: How often to evolve (every N generations)
         """
@@ -89,9 +87,13 @@ class PopulationBasedTrainer(BaseOptimizer):
         
         # Load data
         dataframe = pd.read_parquet(training_filepath)
-        warmup_dataframe = None
-        if warmup_filepath:
-            warmup_dataframe = pd.read_parquet(warmup_filepath)
+
+        medium_dataframe = None
+        easy_dataframe = None
+
+        if medium_filepath and easy_filepath:
+            medium_dataframe = pd.read_parquet(medium_filepath)
+            easy_dataframe = pd.read_parquet(easy_filepath)
         
         # Initialize population models
         models = []
@@ -99,7 +101,8 @@ class PopulationBasedTrainer(BaseOptimizer):
         trainers = []
         evaluators = []
         dataloaders = []
-        warmup_loaders = []
+        medium_loaders = []
+        easy_loaders = []
         
         for i, params in enumerate(population):
             # Convert numpy types to Python types
@@ -110,10 +113,15 @@ class PopulationBasedTrainer(BaseOptimizer):
             dataloader = self.create_dataloader(dataframe, batch_size, mode)
             dataloaders.append(dataloader)
             
-            warmup_loader = None
-            if warmup_dataframe is not None:
-                warmup_loader = self.create_dataloader(warmup_dataframe, batch_size, mode)
-            warmup_loaders.append(warmup_loader)
+            medium_loader = None
+            easy_loader = None
+
+            if medium_dataframe is not None and easy_dataframe is not None:
+                medium_loader = self.create_dataloader(medium_dataframe, batch_size, mode)
+                easy_loader = self.create_dataloader(easy_dataframe, batch_size, mode)
+
+            medium_loaders.append(medium_loader)
+            easy_loaders.append(easy_loader)
             
             # Create model
             model = self.create_siamese_model(mode, internal_layer_size).to(self.device)
@@ -146,8 +154,8 @@ class PopulationBasedTrainer(BaseOptimizer):
             
             # Train each member of the population
             generation_results = []
-            for i, (model, optimizer, trainer, dataloader, warmup_loader) in enumerate(
-                zip(models, optimizers, trainers, dataloaders, warmup_loaders)):
+            for i, (model, optimizer, trainer, dataloader, medium_loader, easy_loader) in enumerate(
+                zip(models, optimizers, trainers, dataloaders, medium_loaders, easy_loaders)):
                 
                 print(f"\n{'='*50}")
                 print(f"Training Population Member {i+1}/{len(population)}")
@@ -184,8 +192,8 @@ class PopulationBasedTrainer(BaseOptimizer):
                     test_filepath=test_filepath,
                     mode=mode,
                     epochs=epochs_per_generation,
-                    warmup_loader=warmup_loader,
-                    warmup_epochs=warmup_epochs
+                    medium_loader=medium_loader, 
+                    easy_loader=easy_loader
                 )
                 
                 # Store results
@@ -260,8 +268,8 @@ class PopulationBasedTrainer(BaseOptimizer):
             print(f"Evolved member {i+1} from member {source_idx+1}")
     
     def optimize(self, training_filepath, test_reference_filepath, test_filepath,
-                mode="pair", loss_type="cosine", warmup_filepath=None,
-                epochs_per_generation=5, warmup_epochs=5, generations=10,
+                mode="pair", loss_type="cosine", medium_filepath=None, easy_filepath=None,
+                epochs_per_generation=5, generations=10,
                 population_size=8, evolution_frequency=2):
         """
         Run PBT optimization.
@@ -272,9 +280,7 @@ class PopulationBasedTrainer(BaseOptimizer):
             test_filepath: Path to test data
             mode: Training mode
             loss_type: Loss function type
-            warmup_filepath: Optional warmup data path
             epochs_per_generation: Number of epochs per generation
-            warmup_epochs: Number of warmup epochs
             generations: Number of generations
             population_size: Size of the population
             evolution_frequency: How often to evolve (every N generations)
@@ -289,8 +295,8 @@ class PopulationBasedTrainer(BaseOptimizer):
         # Train population
         return self.train_population(
             population, training_filepath, test_reference_filepath, test_filepath,
-            mode, loss_type, warmup_filepath, epochs_per_generation, 
-            warmup_epochs, generations, evolution_frequency
+            mode, loss_type, medium_filepath, easy_filepath, epochs_per_generation, 
+            generations, evolution_frequency
         )
     
     def _save_results(self):
