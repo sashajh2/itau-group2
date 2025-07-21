@@ -126,8 +126,8 @@ class BayesianOptimizer:
         return samples
     
     def evaluate_trial(self, params, reference_filepath, test_reference_filepath,
-                      test_filepath, mode, loss_type, warmup_filepath=None, 
-                      epochs=5, warmup_epochs=5):
+                      test_filepath, mode, loss_type, medium_filepath=None, easy_filepath=None,
+                      epochs=5, ):
         """
         Evaluate a single hyperparameter configuration.
         
@@ -143,14 +143,17 @@ class BayesianOptimizer:
             # Load data
             dataframe = pd.read_pickle(reference_filepath)
             warmup_dataframe = None
-            if warmup_filepath:
-                warmup_dataframe = pd.read_pickle(warmup_filepath)
+            if easy_filepath and medium_filepath:
+                easy_dataframe = pd.read_pickle(easy_filepath)
+                medium_dataframe = pd.read_pickle(medium_filepath)
             
             # Create dataloaders
             dataloader = self.create_dataloader(dataframe, batch_size, mode)
-            warmup_loader = None
-            if warmup_dataframe is not None:
-                warmup_loader = self.create_dataloader(warmup_dataframe, batch_size, mode)
+            medium_loader = None
+            hard_loader = None
+            if medium_dataframe is not None and easy_dataframe is not None:
+                medium_loader = self.create_dataloader(medium_dataframe, batch_size, mode)
+                easy_loader = self.create_dataloader(easy_dataframe, batch_size, mode)
             
             # Create model and optimizer
             model = self.model_class(
@@ -189,8 +192,9 @@ class BayesianOptimizer:
                 test_filepath=test_filepath,
                 mode=mode,
                 epochs=epochs,
-                warmup_loader=warmup_loader,
-                warmup_epochs=warmup_epochs
+                medium_loader=medium_loader,
+                easy_loader=easy_loader,
+                medium=medium_loader
             )
             
             # Log results
@@ -232,8 +236,8 @@ class BayesianOptimizer:
             return -0.0  # Return worst possible score
     
     def optimize(self, reference_filepath, test_reference_filepath, test_filepath,
-                mode="pair", loss_type="cosine", warmup_filepath=None,
-                epochs=5, warmup_epochs=5, n_calls=50, n_random_starts=10):
+                mode="pair", loss_type="cosine", medium_filepath=None, easy_filepath=None,
+                epochs=5, n_calls=50, n_random_starts=10):
         """
         Perform Bayesian optimization over hyperparameters.
         
@@ -243,9 +247,7 @@ class BayesianOptimizer:
             test_filepath: Path to test data
             mode: "pair", "triplet", "supcon", or "infonce"
             loss_type: Type of loss function to use
-            warmup_filepath: Optional path to warmup data
             epochs: Number of training epochs
-            warmup_epochs: Number of warmup epochs
             n_calls: Number of optimization iterations
             n_random_starts: Number of random initial points
         """
@@ -264,7 +266,7 @@ class BayesianOptimizer:
             
             accuracy = -self.evaluate_trial(
                 params, reference_filepath, test_reference_filepath,
-                test_filepath, mode, loss_type, warmup_filepath, epochs, warmup_epochs
+                test_filepath, mode, loss_type, easy_filepath, medium_filepath, epochs,
             )
             
             if accuracy > self.best_accuracy:
@@ -284,7 +286,7 @@ class BayesianOptimizer:
             
             accuracy = -self.evaluate_trial(
                 params, reference_filepath, test_reference_filepath,
-                test_filepath, mode, loss_type, warmup_filepath, epochs, warmup_epochs
+                test_filepath, mode, loss_type, easy_filepath, medium_filepath, epochs,
             )
             
             if accuracy > self.best_accuracy:

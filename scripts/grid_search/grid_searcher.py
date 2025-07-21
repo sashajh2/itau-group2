@@ -49,8 +49,8 @@ class GridSearcher:
 
     def search(self, reference_filepath, test_reference_filepath, test_filepath,
               lrs, batch_sizes, margins, internal_layer_sizes,
-              mode="pair", loss_type="cosine", warmup_filepath=None,
-              epochs=5, warmup_epochs=5, curriculum = None, temperature=0.07):
+              mode="pair", loss_type="cosine", medium_filepath=None, easy_filepath = None,
+              epochs=5, curriculum = None, temperature=0.07):
         """
         Perform grid search over hyperparameters.
         
@@ -64,9 +64,9 @@ class GridSearcher:
             internal_layer_sizes: List of internal layer sizes to try
             mode: "pair", "triplet", "supcon", or "infonce"
             loss_type: Type of loss function to use
-            warmup_filepath: Optional path to warmup data
+            medium_filepath: Optional path to warmup data
+            easy_filepath: Optional path to warmup data
             epochs: Number of training epochs
-            warmup_epochs: Number of warmup epochs
             temperature: Temperature parameter for SupCon/InfoNCE loss
         """
         results = []
@@ -77,8 +77,9 @@ class GridSearcher:
 
         # Load data
         dataframe = pd.read_pickle(reference_filepath)
-        if warmup_filepath:
-            warmup_dataframe = pd.read_pickle(warmup_filepath)
+        if medium_filepath and easy_filepath:
+            medium_dataframe = pd.read_pickle(medium_filepath)
+            easy_dataframe = pd.read_pickle(easy_filepath)
 
         # Get loss class
         loss_class = self.get_loss_class(mode, loss_type)
@@ -86,9 +87,12 @@ class GridSearcher:
         for batch_size in batch_sizes:
             # Create dataloaders
             dataloader = self.create_dataloader(dataframe, batch_size, mode)
-            warmup_loader = None
-            if warmup_filepath:
-                warmup_loader = self.create_dataloader(warmup_dataframe, batch_size, mode)
+            medium_loader = None
+            easy_loader = None
+            if medium_filepath and easy_filepath:
+                medium_loader = self.create_dataloader(medium_dataframe, batch_size, mode)
+                easy_loader = self.create_dataloader(easy_dataframe, batch_size, mode)
+
 
             for internal_layer_size in internal_layer_sizes:
                 for lr in lrs:
@@ -130,8 +134,8 @@ class GridSearcher:
                             test_filepath=test_filepath,
                             mode=mode,
                             epochs=epochs,
-                            warmup_loader=warmup_loader,
-                            warmup_epochs=warmup_epochs,
+                            medium_loader=medium_loader,
+                            easy_loader = easy_loader,
                             curriculum=curriculum
                         )
 

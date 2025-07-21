@@ -3,7 +3,7 @@ import csv
 from sklearn.metrics import precision_score, recall_score, roc_curve
 from utils.evals import find_best_threshold_youden
 from scripts.evaluation.evaluator import Evaluator
-from torch.utils.data import DataLoader, Subset, ConcatDataset, 
+from torch.utils.data import DataLoader, Subset, ConcatDataset
 import numpy as np
 import random
 from model_utils.loss.supcon_loss import SupConLoss
@@ -66,7 +66,7 @@ class Trainer:
 
     # pass in curriculum learning parameter 
     def train(self, hard_loader, test_reference_filepath, test_filepath, 
-             mode="pair", epochs=30, medium_loader = None, easy_loader=None, curriculum = None):
+            epochs=30, medium_loader = None, easy_loader=None, curriculum = None):
         """
         Main training loop with optional warmup.
         
@@ -76,9 +76,7 @@ class Trainer:
             test_filepath: Path to test data
             mode: "pair" or "triplet"
             epochs: Number of training epochs
-            warmup_loader: Optional warmup dataloader
-            warmup_epochs: Number of warmup epochs
-            
+
         Returns:
             dict: Best metrics achieved during training
         """

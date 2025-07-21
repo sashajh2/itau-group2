@@ -193,8 +193,8 @@ class PopulationBasedTrainer:
             return torch.optim.SGD(model.parameters(), lr=params['lr'], weight_decay=params['weight_decay'])
     
     def train_population(self, population, reference_filepath, test_reference_filepath, test_filepath,
-                        mode, loss_type, warmup_filepath=None, epochs_per_generation=5, 
-                        warmup_epochs=5, generations=10, evolution_frequency=2):
+                        mode, loss_type, medium_filepath = None, easy_filepath = None, epochs_per_generation=5, 
+                        generations=10, evolution_frequency=2):
         """
         Train the population with evolution.
         
@@ -205,9 +205,7 @@ class PopulationBasedTrainer:
             test_filepath: Path to test data
             mode: Training mode
             loss_type: Loss function type
-            warmup_filepath: Optional warmup data path
             epochs_per_generation: Number of epochs per generation
-            warmup_epochs: Number of warmup epochs
             generations: Number of generations
             evolution_frequency: How often to evolve (every N generations)
         """
@@ -217,8 +215,9 @@ class PopulationBasedTrainer:
         # Load data
         dataframe = pd.read_pickle(reference_filepath)
         warmup_dataframe = None
-        if warmup_filepath:
-            warmup_dataframe = pd.read_pickle(warmup_filepath)
+        if medium_filepath and easy_filepath:
+            medium_dataframe = pd.read_pickle(medium_filepath)
+            easy_dataframe = pd.read_pickle(easy_filepath)
         
         # Initialize population models
         models = []
@@ -226,17 +225,22 @@ class PopulationBasedTrainer:
         trainers = []
         evaluators = []
         dataloaders = []
-        warmup_loaders = []
+        easy_loaders = []
+        medium_loaders = []
         
         for i, params in enumerate(population):
             # Create dataloader
             dataloader = self.create_dataloader(dataframe, params['batch_size'], mode)
             dataloaders.append(dataloader)
             
-            warmup_loader = None
-            if warmup_dataframe is not None:
-                warmup_loader = self.create_dataloader(warmup_dataframe, params['batch_size'], mode)
-            warmup_loaders.append(warmup_loader)
+            medium_loader = None
+            easy_loader = None
+            if medium_loader is not None and easy_loader is not None:
+                medium_loader = self.create_dataloader(medium_dataframe, params['batch_size'], mode)
+                easy_loader = self.create_dataloader(easy_dataframe, params['batch_size'], mode)
+
+            medium_loaders.append(medium_loader)
+            easy_loaders.append(easy_loaders)
             
             # Create model
             model = self.model_class(
@@ -277,7 +281,7 @@ class PopulationBasedTrainer:
             
             # Train all models in the population
             generation_results = []
-            for i, (model, trainer, dataloader, warmup_loader) in enumerate(zip(models, trainers, dataloaders, warmup_loaders)):
+            for i, (model, trainer, dataloader, medium_loader, easy_loader) in enumerate(zip(models, trainers, dataloaders,  medium_loader, easy_loader)):
                 print(f"Training model {i+1}/{len(models)} with params: {population[i]}")
                 
                 # Train model
@@ -287,8 +291,8 @@ class PopulationBasedTrainer:
                     test_filepath=test_filepath,
                     mode=mode,
                     epochs=epochs_per_generation,
-                    warmup_loader=warmup_loader,
-                    warmup_epochs=warmup_epochs if generation == 0 else 0
+                    medium_loader=medium_loader,
+                    easy_loader=easy_loader
                 )
                 
                 result = {
@@ -314,9 +318,13 @@ class PopulationBasedTrainer:
                 # Update dataloaders for new batch sizes
                 for i, params in enumerate(population):
                     dataloaders[i] = self.create_dataloader(dataframe, params['batch_size'], mode)
-                    if warmup_dataframe is not None:
-                        warmup_loaders[i] = self.create_dataloader(warmup_dataframe, params['batch_size'], mode)
-                    
+
+                    #
+                    if medium_dataframe is not None and easy_dataframe is not None:
+                        medium_loader[i] = self.create_dataloader(medium_dataframe, params['batch_size'], mode)
+                        easy_loader[i] = self.create_dataloader(easy_dataframe, params['batch_size'], mode)
+
+
                     # Update optimizer for new parameters
                     optimizers[i] = self.create_optimizer(models[i], params)
                     
@@ -394,8 +402,8 @@ class PopulationBasedTrainer:
             print(f"Model {i+1} evolved from model {parent_model_idx+1} with new params: {population[i]}")
     
     def optimize(self, reference_filepath, test_reference_filepath, test_filepath,
-                mode="pair", loss_type="cosine", warmup_filepath=None,
-                epochs_per_generation=5, warmup_epochs=5, generations=10,
+                mode="pair", loss_type="cosine", medium_filepath=None, easy_filepath = None,
+                epochs_per_generation=5, generations=10,
                 population_size=8, evolution_frequency=2):
         """
         Perform Population-Based Training optimization.
@@ -406,9 +414,7 @@ class PopulationBasedTrainer:
             test_filepath: Path to test data
             mode: "pair", "triplet", "supcon", or "infonce"
             loss_type: Type of loss function to use
-            warmup_filepath: Optional path to warmup data
             epochs_per_generation: Number of epochs per generation
-            warmup_epochs: Number of warmup epochs
             generations: Number of generations
             population_size: Size of the population
             evolution_frequency: How often to evolve (every N generations)
@@ -419,7 +425,7 @@ class PopulationBasedTrainer:
         # Train population
         best_config, results_df = self.train_population(
             population, reference_filepath, test_reference_filepath, test_filepath,
-            mode, loss_type, warmup_filepath, epochs_per_generation, warmup_epochs,
+            mode, loss_type, medium_filepath, easy_filepath, epochs_per_generation,
             generations, evolution_frequency
         )
         

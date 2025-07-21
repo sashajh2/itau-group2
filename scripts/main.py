@@ -26,8 +26,10 @@ def main():
                       help='Model type: pair, triplet, supcon, or infonce')
     parser.add_argument('--loss_type', type=str, choices=['cosine', 'euclidean', 'hybrid', 'supcon', 'infonce'], default='cosine',
                       help='Loss function type')
-    parser.add_argument('--warmup_filepath', type=str,
-                      help='Path to warmup data (optional)')
+    parser.add_argument('--medium_filepath', type=str,
+                      help='Path to medium data (optional)')
+    parser.add_argument('--easy_filepath', type=str,
+                      help='easy to medium data (optional)')
     
     # Grid search parameters
     parser.add_argument('--lrs', type=str, default='[1e-4]',
@@ -42,8 +44,6 @@ def main():
     # Training parameters
     parser.add_argument('--epochs', type=int, default=5,
                       help='Number of training epochs')
-    parser.add_argument('--warmup_epochs', type=int, default=5,
-                      help='Number of warmup epochs')
     parser.add_argument('--curriculum', type=str, default=None,
                       help='Curriculum learning mode')
     parser.add_argument('--log_dir', type=str, default='/content/drive/MyDrive/Project_2_Business_Names/Summer 2025/code',
@@ -135,8 +135,8 @@ def main():
             test_filepath=args.test_filepath,
             mode=args.model_type,
             epochs=args.epochs,
-            warmup_loader=None,  # You'll need to create appropriate dataloader
-            warmup_epochs=args.warmup_epochs,
+            medium_loader=None, 
+            easy_loader = None,
             curriculum = args.curriculum
         )
 
@@ -168,9 +168,9 @@ def main():
             internal_layer_sizes=internal_layer_sizes,
             mode=args.model_type,
             loss_type=args.loss_type,
-            warmup_filepath=args.warmup_filepath,
+            medium_filepath=args.medium_filepath,
+            easy_filepath=args.easy_filepath,
             epochs=args.epochs,
-            warmup_epochs=args.warmup_epochs,
             temperature=args.temperature,
             curriculum=args.curriculum
         )
@@ -205,7 +205,6 @@ def main():
             'pruner': args.pruner if args.pruner != 'none' else None,
             'study_name': args.study_name,
             'epochs': args.epochs,
-            'warmup_epochs': args.warmup_epochs
         }
         
         best_config, results_df, additional_info = optimizer.optimize(
@@ -215,7 +214,8 @@ def main():
             test_filepath=args.test_filepath,
             mode=args.model_type,
             loss_type=args.loss_type,
-            warmup_filepath=args.warmup_filepath,
+            medium_filepath=args.medium_filepath,
+            easy_filepath=args.easy_filepath,
             **opt_params
         )
         
@@ -243,7 +243,6 @@ def main():
             'n_calls': args.n_calls,
             'n_random_starts': args.n_random_starts,
             'epochs': args.epochs,
-            'warmup_epochs': args.warmup_epochs,
             'sampler': args.sampler,
             'pruner': args.pruner if args.pruner != 'none' else None
         }
@@ -254,7 +253,8 @@ def main():
             test_filepath=args.test_filepath,
             mode=args.model_type,
             loss_type=args.loss_type,
-            warmup_filepath=args.warmup_filepath,
+            medium_filepath=args.medium_filepath,
+            easy_filepath=args.easy_filepath,
             **opt_params
         )
         

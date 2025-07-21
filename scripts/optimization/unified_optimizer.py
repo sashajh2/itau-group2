@@ -200,8 +200,8 @@ class UnifiedHyperparameterOptimizer:
             return torch.optim.SGD(model.parameters(), lr=params['lr'], weight_decay=params['weight_decay'])
     
     def train_population(self, population, reference_filepath, test_reference_filepath, test_filepath,
-                        mode, loss_type, warmup_filepath=None, epochs_per_generation=5, 
-                        warmup_epochs=5, generations=10, evolution_frequency=2):
+                        mode, loss_type, medium_filepath=None, easy_filepath=None, epochs_per_generation=5, 
+                        generations=10, evolution_frequency=2):
         """
         Train the population with evolution.
         
@@ -212,9 +212,7 @@ class UnifiedHyperparameterOptimizer:
             test_filepath: Path to test data
             mode: Training mode
             loss_type: Loss function type
-            warmup_filepath: Optional warmup data path
             epochs_per_generation: Number of epochs per generation
-            warmup_epochs: Number of warmup epochs
             generations: Number of generations
             evolution_frequency: How often to evolve (every N generations)
         """
@@ -224,8 +222,9 @@ class UnifiedHyperparameterOptimizer:
         # Load data
         dataframe = pd.read_pickle(reference_filepath)
         warmup_dataframe = None
-        if warmup_filepath:
-            warmup_dataframe = pd.read_pickle(warmup_filepath)
+        if medium_filepath and easy_filepath:
+            medium_dataframe = pd.read_pickle(medium_filepath)
+            easy_dataframe = pd.read_pickle(easy_filepath)
         
         # Initialize population models
         models = []
@@ -233,17 +232,21 @@ class UnifiedHyperparameterOptimizer:
         trainers = []
         evaluators = []
         dataloaders = []
-        warmup_loaders = []
+        medium_loaders = []
+        easy_loaders = []
         
         for i, params in enumerate(population):
             # Create dataloader
             dataloader = self.create_dataloader(dataframe, params['batch_size'], mode)
             dataloaders.append(dataloader)
-            
-            warmup_loader = None
-            if warmup_dataframe is not None:
-                warmup_loader = self.create_dataloader(warmup_dataframe, params['batch_size'], mode)
-            warmup_loaders.append(warmup_loader)
+
+            medium_loader = None
+            easy_loader = None
+
+            if medium_dataframe is not None and easy_dataframe is not None:
+                medium_loader = self.create_dataloader(medium_dataframe, params['batch_size'], mode)
+                easy_loader = self.create_dataloader(easy_dataframe, params['batch_size'], mode)
+
             
             # Create model
             model = self.model_class(
@@ -284,7 +287,8 @@ class UnifiedHyperparameterOptimizer:
             
             # Train all models in the population
             generation_results = []
-            for i, (model, trainer, dataloader, warmup_loader) in enumerate(zip(models, trainers, dataloaders, warmup_loaders)):
+            ## check
+            for i, (model, trainer, dataloader, medium_loader, easy_loader) in enumerate(zip(models, trainers, dataloaders, medium_loaders, easy_loaders)):
                 print(f"Training model {i+1}/{len(models)} with params: {population[i]}")
                 
                 # Train model
@@ -294,8 +298,8 @@ class UnifiedHyperparameterOptimizer:
                     test_filepath=test_filepath,
                     mode=mode,
                     epochs=epochs_per_generation,
-                    warmup_loader=warmup_loader,
-                    warmup_epochs=warmup_epochs if generation == 0 else 0
+                    medium_loader=medium_loader,
+                    easy_loader=easy_loader
                 )
                 
                 # Log results
@@ -353,8 +357,10 @@ class UnifiedHyperparameterOptimizer:
                 # Update dataloaders for new batch sizes
                 for i, params in enumerate(population):
                     dataloaders[i] = self.create_dataloader(dataframe, params['batch_size'], mode)
-                    if warmup_dataframe is not None:
-                        warmup_loaders[i] = self.create_dataloader(warmup_dataframe, params['batch_size'], mode)
+
+                    if medium_dataframe is not None and easy_dataframe is not None:
+                        medium_loaders[i] = self.create_dataloader(medium_dataframe, params['bath_size'], mode)
+                        easy_loaders[i] = self.create_dataloader(easy_dataframe, params['batch_size'],mode)
                     
                     # Update optimizer for new parameters
                     optimizers[i] = self.create_optimizer(models[i], params)
@@ -423,7 +429,7 @@ class UnifiedHyperparameterOptimizer:
             print(f"Model {i+1} evolved from model {parent_model_idx+1} with new params: {population[i]}")
     
     def optimize(self, method, reference_filepath, test_reference_filepath, test_filepath,
-                mode="pair", loss_type="cosine", warmup_filepath=None, **kwargs):
+                mode="pair", loss_type="cosine", medium_filepath=None, easy_filepath = None, **kwargs):
         """
         Perform hyperparameter optimization using the specified method.
         
@@ -434,7 +440,6 @@ class UnifiedHyperparameterOptimizer:
             test_filepath: Path to test data
             mode: "pair", "triplet", "supcon", or "infonce"
             loss_type: Type of loss function to use
-            warmup_filepath: Optional path to warmup data
             **kwargs: Additional arguments specific to each method
             
         Returns:
@@ -445,33 +450,32 @@ class UnifiedHyperparameterOptimizer:
         if method == "bayesian":
             return self._run_bayesian_optimization(
                 reference_filepath, test_reference_filepath, test_filepath,
-                mode, loss_type, warmup_filepath, **kwargs
+                mode, loss_type, medium_filepath, easy_filepath, **kwargs
             )
         elif method == "random":
             return self._run_random_optimization(
                 reference_filepath, test_reference_filepath, test_filepath,
-                mode, loss_type, warmup_filepath, **kwargs
+                mode, loss_type, medium_filepath, easy_filepath, **kwargs
             )
         elif method == "optuna":
             return self._run_optuna_optimization(
                 reference_filepath, test_reference_filepath, test_filepath,
-                mode, loss_type, warmup_filepath, **kwargs
+                mode, loss_type, medium_filepath, easy_filepath, **kwargs
             )
         elif method == "pbt":
             return self._run_pbt_optimization(
                 reference_filepath, test_reference_filepath, test_filepath,
-                mode, loss_type, warmup_filepath, **kwargs
+                mode, loss_type, medium_filepath, easy_filepath, **kwargs
             )
         else:
             raise ValueError(f"Unknown optimization method: {method}")
     
     def _run_bayesian_optimization(self, reference_filepath, test_reference_filepath, test_filepath,
-                                 mode, loss_type, warmup_filepath, **kwargs):
+                                 mode, loss_type, medium_filepath, easy_filepath, **kwargs):
         """Run Bayesian optimization"""
         n_calls = kwargs.get('n_calls', 50)
         n_random_starts = kwargs.get('n_random_starts', 10)
         epochs = kwargs.get('epochs', 5)
-        warmup_epochs = kwargs.get('warmup_epochs', 5)
         
         best_config, results_df = self.bayesian_optimizer.optimize(
             reference_filepath=reference_filepath,
@@ -479,9 +483,8 @@ class UnifiedHyperparameterOptimizer:
             test_filepath=test_filepath,
             mode=mode,
             loss_type=loss_type,
-            warmup_filepath=warmup_filepath,
-            epochs=epochs,
-            warmup_epochs=warmup_epochs,
+            medium_filepath=medium_filepath,
+            easy_filepath=easy_filepath,
             n_calls=n_calls,
             n_random_starts=n_random_starts
         )
@@ -496,11 +499,10 @@ class UnifiedHyperparameterOptimizer:
         return best_config, results_df, {"method": "bayesian"}
     
     def _run_random_optimization(self, reference_filepath, test_reference_filepath, test_filepath,
-                               mode, loss_type, warmup_filepath, **kwargs):
+                               mode, loss_type, medium_filepath, easy_filepath, **kwargs):
         """Run random search optimization"""
         n_trials = kwargs.get('n_trials', 50)
         epochs = kwargs.get('epochs', 5)
-        warmup_epochs = kwargs.get('warmup_epochs', 5)
         
         best_config, results_df = self.random_optimizer.optimize(
             reference_filepath=reference_filepath,
@@ -508,9 +510,10 @@ class UnifiedHyperparameterOptimizer:
             test_filepath=test_filepath,
             mode=mode,
             loss_type=loss_type,
-            warmup_filepath=warmup_filepath,
+            ### check
+            easy_filepath=easy_filepath,
+            medium_filepath=medium_filepath,
             epochs=epochs,
-            warmup_epochs=warmup_epochs,
             n_trials=n_trials
         )
         
@@ -524,11 +527,10 @@ class UnifiedHyperparameterOptimizer:
         return best_config, results_df, {"method": "random"}
     
     def _run_optuna_optimization(self, reference_filepath, test_reference_filepath, test_filepath,
-                               mode, loss_type, warmup_filepath, **kwargs):
+                               mode, loss_type, medium_filepath, easy_filepath, **kwargs):
         """Run Optuna optimization"""
         n_trials = kwargs.get('n_trials', 50)
         epochs = kwargs.get('epochs', 5)
-        warmup_epochs = kwargs.get('warmup_epochs', 5)
         sampler = kwargs.get('sampler', 'tpe')
         pruner = kwargs.get('pruner', 'median')
         study_name = kwargs.get('study_name', None)
@@ -539,9 +541,9 @@ class UnifiedHyperparameterOptimizer:
             test_filepath=test_filepath,
             mode=mode,
             loss_type=loss_type,
-            warmup_filepath=warmup_filepath,
+            medium_filepath=medium_filepath,
+            easy_filepath=easy_filepath,
             epochs=epochs,
-            warmup_epochs=warmup_epochs,
             n_trials=n_trials,
             sampler=sampler,
             pruner=pruner,
@@ -565,10 +567,9 @@ class UnifiedHyperparameterOptimizer:
         return best_config, results_df, {"method": "optuna", "study": study}
     
     def _run_pbt_optimization(self, reference_filepath, test_reference_filepath, test_filepath,
-                            mode, loss_type, warmup_filepath, **kwargs):
+                            mode, loss_type, medium_filepath, easy_filepath, **kwargs):
         """Run Population-Based Training optimization"""
         epochs_per_generation = kwargs.get('epochs_per_generation', 5)
-        warmup_epochs = kwargs.get('warmup_epochs', 5)
         generations = kwargs.get('generations', 10)
         population_size = kwargs.get('population_size', 8)
         evolution_frequency = kwargs.get('evolution_frequency', 2)
@@ -579,9 +580,9 @@ class UnifiedHyperparameterOptimizer:
             test_filepath=test_filepath,
             mode=mode,
             loss_type=loss_type,
-            warmup_filepath=warmup_filepath,
+            medium_filepath=medium_filepath, 
+            easy_filepath=easy_filepath,
             epochs_per_generation=epochs_per_generation,
-            warmup_epochs=warmup_epochs,
             generations=generations,
             population_size=population_size,
             evolution_frequency=evolution_frequency
@@ -597,7 +598,7 @@ class UnifiedHyperparameterOptimizer:
         return best_config, results_df, {"method": "pbt"}
     
     def compare_methods(self, reference_filepath, test_reference_filepath, test_filepath,
-                       mode="pair", loss_type="cosine", warmup_filepath=None, **kwargs):
+                       mode="pair", loss_type="cosine", medium_filepath=None, easy_filepath=None, **kwargs):
         """
         Compare different optimization methods on the same problem.
         
@@ -607,7 +608,6 @@ class UnifiedHyperparameterOptimizer:
             test_filepath: Path to test data
             mode: Training mode
             loss_type: Loss function type
-            warmup_filepath: Optional warmup data path
             **kwargs: Additional arguments for optimization
             
         Returns:
@@ -624,7 +624,7 @@ class UnifiedHyperparameterOptimizer:
             try:
                 best_config, results_df, additional_info = self.optimize(
                     method, reference_filepath, test_reference_filepath, test_filepath,
-                    mode, loss_type, warmup_filepath, **kwargs
+                    mode, loss_type, medium_filepath, easy_filepath, **kwargs
                 )
                 
                 results[method] = {

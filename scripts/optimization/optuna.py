@@ -83,7 +83,7 @@ class OptunaOptimizer:
         return DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     
     def objective(self, trial, reference_filepath, test_reference_filepath, test_filepath,
-                 mode, loss_type, warmup_filepath=None, epochs=5, warmup_epochs=5):
+                 mode, loss_type, medium_filepath=None, easy_filepath = None, epochs=5):
         """
         Objective function for Optuna optimization.
         
@@ -94,9 +94,7 @@ class OptunaOptimizer:
             test_filepath: Path to test data
             mode: Training mode
             loss_type: Loss function type
-            warmup_filepath: Optional warmup data path
             epochs: Number of training epochs
-            warmup_epochs: Number of warmup epochs
             
         Returns:
             float: Objective value (accuracy)
@@ -123,14 +121,16 @@ class OptunaOptimizer:
             # Load data
             dataframe = pd.read_pickle(reference_filepath)
             warmup_dataframe = None
-            if warmup_filepath:
-                warmup_dataframe = pd.read_pickle(warmup_filepath)
+            if medium_filepath and easy_filepath:
+                medium_filepath = pd.read_pickle(medium_filepath)
+                easy_filepath = pd.read_pickle(easy_filepath)
             
             # Create dataloaders
             dataloader = self.create_dataloader(dataframe, batch_size, mode)
-            warmup_loader = None
-            if warmup_dataframe is not None:
-                warmup_loader = self.create_dataloader(warmup_dataframe, batch_size, mode)
+            medium_loader = None
+            easy_loader = None
+            if medium_dataframe is not None and easy_dataframe is not None:
+                medium_loader = self.create_dataloader(medium_dataframe, batch_size, mode)
             
             # Create model
             model = self.model_class(
@@ -172,8 +172,8 @@ class OptunaOptimizer:
                 test_filepath=test_filepath,
                 mode=mode,
                 epochs=epochs,
-                warmup_loader=warmup_loader,
-                warmup_epochs=warmup_epochs
+                medium_loader=medium_loader,
+                easy_loader=easy_loader
             )
             
             # Log results
@@ -221,8 +221,8 @@ class OptunaOptimizer:
             return 0.0
     
     def optimize(self, reference_filepath, test_reference_filepath, test_filepath,
-                mode="pair", loss_type="cosine", warmup_filepath=None,
-                epochs=5, warmup_epochs=5, n_trials=50, sampler="tpe", 
+                mode="pair", loss_type="cosine", medium_filepath=None, easy_filepath=None,
+                epochs=5, n_trials=50, sampler="tpe", 
                 pruner="median", study_name=None):
         """
         Perform Optuna-based hyperparameter optimization.
@@ -233,9 +233,7 @@ class OptunaOptimizer:
             test_filepath: Path to test data
             mode: "pair", "triplet", "supcon", or "infonce"
             loss_type: Type of loss function to use
-            warmup_filepath: Optional path to warmup data
             epochs: Number of training epochs
-            warmup_epochs: Number of warmup epochs
             n_trials: Number of optimization trials
             sampler: Sampler type ("tpe", "random", "cmaes")
             pruner: Pruner type ("median", "hyperband", None)
@@ -281,7 +279,7 @@ class OptunaOptimizer:
         def objective_wrapper(trial):
             return self.objective(
                 trial, reference_filepath, test_reference_filepath, test_filepath,
-                mode, loss_type, warmup_filepath, epochs, warmup_epochs
+                mode, loss_type, medium_filepath, easy_filepath, epochs,
             )
         
         # Run optimization
