@@ -212,6 +212,8 @@ class UnifiedHyperparameterOptimizer:
             test_filepath: Path to test data
             mode: Training mode
             loss_type: Loss function type
+            medium_filepath: optional filepath to medium 
+            easy_filepath: options filepath to easy
             epochs_per_generation: Number of epochs per generation
             generations: Number of generations
             evolution_frequency: How often to evolve (every N generations)
@@ -247,7 +249,9 @@ class UnifiedHyperparameterOptimizer:
                 medium_loader = self.create_dataloader(medium_dataframe, params['batch_size'], mode)
                 easy_loader = self.create_dataloader(easy_dataframe, params['batch_size'], mode)
 
-            
+            medium_loaders.append(medium_loader)
+            easy_loaders.append(easy_loader)
+
             # Create model
             model = self.model_class(
                 embedding_dim=512,
@@ -440,6 +444,8 @@ class UnifiedHyperparameterOptimizer:
             test_filepath: Path to test data
             mode: "pair", "triplet", "supcon", or "infonce"
             loss_type: Type of loss function to use
+            medium_filepath: optional filepath to medium 
+            easy_filepath: options filepath to easy
             **kwargs: Additional arguments specific to each method
             
         Returns:
@@ -483,6 +489,7 @@ class UnifiedHyperparameterOptimizer:
             test_filepath=test_filepath,
             mode=mode,
             loss_type=loss_type,
+            epochs=epochs,
             medium_filepath=medium_filepath,
             easy_filepath=easy_filepath,
             n_calls=n_calls,
@@ -510,7 +517,6 @@ class UnifiedHyperparameterOptimizer:
             test_filepath=test_filepath,
             mode=mode,
             loss_type=loss_type,
-            ### check
             easy_filepath=easy_filepath,
             medium_filepath=medium_filepath,
             epochs=epochs,
@@ -608,6 +614,8 @@ class UnifiedHyperparameterOptimizer:
             test_filepath: Path to test data
             mode: Training mode
             loss_type: Loss function type
+            medium_filepath: optional filepath to medium 
+            easy_filepath: options filepath to easy
             **kwargs: Additional arguments for optimization
             
         Returns:

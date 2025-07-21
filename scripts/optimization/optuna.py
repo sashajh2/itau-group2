@@ -95,6 +95,8 @@ class OptunaOptimizer:
             mode: Training mode
             loss_type: Loss function type
             epochs: Number of training epochs
+            medium_filepath: optional filepath to medium 
+            easy_filepath: options filepath to easy
             
         Returns:
             float: Objective value (accuracy)
@@ -120,10 +122,11 @@ class OptunaOptimizer:
         try:
             # Load data
             dataframe = pd.read_pickle(reference_filepath)
-            warmup_dataframe = None
+            medium_dataframe = None
+            easy_dataframe = None
             if medium_filepath and easy_filepath:
-                medium_filepath = pd.read_pickle(medium_filepath)
-                easy_filepath = pd.read_pickle(easy_filepath)
+                medium_dataframe = pd.read_pickle(medium_filepath)
+                easy_dataframe = pd.read_pickle(easy_filepath)
             
             # Create dataloaders
             dataloader = self.create_dataloader(dataframe, batch_size, mode)
@@ -131,6 +134,7 @@ class OptunaOptimizer:
             easy_loader = None
             if medium_dataframe is not None and easy_dataframe is not None:
                 medium_loader = self.create_dataloader(medium_dataframe, batch_size, mode)
+                easy_loader = self.create_dataloader(easy_dataframe, batch_size, mode)
             
             # Create model
             model = self.model_class(
@@ -233,7 +237,8 @@ class OptunaOptimizer:
             test_filepath: Path to test data
             mode: "pair", "triplet", "supcon", or "infonce"
             loss_type: Type of loss function to use
-            epochs: Number of training epochs
+            medium_filepath: optional filepath to medium 
+            easy_filepath: options filepath to easy
             n_trials: Number of optimization trials
             sampler: Sampler type ("tpe", "random", "cmaes")
             pruner: Pruner type ("median", "hyperband", None)

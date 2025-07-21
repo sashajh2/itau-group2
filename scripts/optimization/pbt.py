@@ -206,6 +206,8 @@ class PopulationBasedTrainer:
             mode: Training mode
             loss_type: Loss function type
             epochs_per_generation: Number of epochs per generation
+            medium_filepath: optional filepath to medium 
+            easy_filepath: options filepath to easy
             generations: Number of generations
             evolution_frequency: How often to evolve (every N generations)
         """
@@ -281,7 +283,7 @@ class PopulationBasedTrainer:
             
             # Train all models in the population
             generation_results = []
-            for i, (model, trainer, dataloader, medium_loader, easy_loader) in enumerate(zip(models, trainers, dataloaders,  medium_loader, easy_loader)):
+            for i, (model, trainer, dataloader, medium_loader, easy_loader) in enumerate(zip(models, trainers, dataloaders,  medium_loaders, easy_loaders)):
                 print(f"Training model {i+1}/{len(models)} with params: {population[i]}")
                 
                 # Train model
@@ -416,6 +418,8 @@ class PopulationBasedTrainer:
             loss_type: Type of loss function to use
             epochs_per_generation: Number of epochs per generation
             generations: Number of generations
+            medium_filepath: optional filepath to medium 
+            easy_filepath: options filepath to easy
             population_size: Size of the population
             evolution_frequency: How often to evolve (every N generations)
         """

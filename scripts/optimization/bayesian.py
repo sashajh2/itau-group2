@@ -248,6 +248,8 @@ class BayesianOptimizer:
             mode: "pair", "triplet", "supcon", or "infonce"
             loss_type: Type of loss function to use
             epochs: Number of training epochs
+            medium_filepath: optional filepath to medium 
+            easy_filepath: options filepath to easy
             n_calls: Number of optimization iterations
             n_random_starts: Number of random initial points
         """

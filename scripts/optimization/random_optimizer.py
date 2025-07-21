@@ -146,8 +146,8 @@ class RandomOptimizer:
                 medium_dataframe = pd.read_pickle(medium_filepath)
                 easy_dataframe = pd.read_pickle(easy_filepath)
 
-            
             # Create dataloaders
+            dataloader = self.create_dataloader(dataframe, batch_size, mode)
             medium_loader = None
             easy_loader = None
 
@@ -239,6 +239,8 @@ class RandomOptimizer:
             test_filepath: Path to test data
             mode: "pair", "triplet", "supcon", or "infonce"
             loss_type: Type of loss function to use
+            medium_filepath: optional filepath to medium 
+            easy_filepath: options filepath to easy
             epochs: Number of training epochs
             n_trials: Number of random trials to perform
         """
