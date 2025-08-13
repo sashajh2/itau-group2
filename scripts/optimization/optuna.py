@@ -54,7 +54,7 @@ class OptunaOptimizer(BaseOptimizer):
             temperature = trial.suggest_float("temperature", 0.01, 0.1, log=True)
             params['temperature'] = temperature
         else:
-            margin = trial.suggest_float("margin", 0.05, 0.7)
+            margin = trial.suggest_float("margin", 0.01, 0.2)
             params['margin'] = margin
         
         # Optional: suggest optimizer
