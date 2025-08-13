@@ -43,7 +43,7 @@ class OptunaOptimizer(BaseOptimizer):
         """
         # Suggest hyperparameters
         lr = trial.suggest_float("lr", 1e-5, 5e-5, log=True)
-        batch_size = trial.suggest_categorical("batch_size", [64, 128, 256])
+        batch_size = trial.suggest_categorical("batch_size", [128, 256, 512])
         internal_layer_size = trial.suggest_categorical("internal_layer_size", [512, 768, 1024])
         
 
