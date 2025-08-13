@@ -165,8 +165,8 @@ class InfoNCEDataset(Dataset):
                       'negative_names' (list of negatives)
             max_negatives: Maximum number of negatives to use per sample (default: 6)
         """
-        self.anchor_data = dataframe['anchor_name'].tolist()
-        self.positive_data = dataframe['positive_name'].tolist()
+        self.anchor_data = dataframe['fraud_name'].tolist()
+        self.positive_data = dataframe['real_name'].tolist()
         
         # Handle negative_names - they might be string representations of lists
         raw_negative_data = dataframe['negative_names'].tolist()
