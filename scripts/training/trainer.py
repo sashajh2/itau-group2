@@ -131,15 +131,33 @@ class Trainer:
                 med_idx = np.random.choice(len(medium_loader.dataset), medium_n, replace=False)
                 hard_idx = np.random.choice(len(dataloader.dataset), hard_n, replace=False)
 
+                # Create a custom collate function that ensures consistent negative counts
+                def curriculum_collate_fn(batch):
+                    anchors, positives, negatives = zip(*batch)
+                    
+                    # Find the maximum number of negatives in this batch
+                    max_negatives = max(len(neg_list) for neg_list in negatives)
+                    
+                    # Pad all negative lists to the same length
+                    padded_negatives = []
+                    for neg_list in negatives:
+                        if len(neg_list) < max_negatives:
+                            # Pad by repeating the first negative
+                            padded_neg_list = neg_list + [neg_list[0]] * (max_negatives - len(neg_list))
+                        else:
+                            padded_neg_list = neg_list
+                        padded_negatives.append(padded_neg_list)
+                    
+                    return list(anchors), list(positives), padded_negatives
+
                 mixed_dataset = ConcatDataset([
                     Subset(easy_loader.dataset, easy_idx),
                     Subset(medium_loader.dataset, med_idx),
                     Subset(dataloader.dataset, hard_idx)
                 ])
 
-                # Preserve the collate_fn from the original dataloader
-                collate_fn = getattr(dataloader, 'collate_fn', None)
-                current_loader = DataLoader(mixed_dataset, batch_size=dataloader.batch_size, shuffle=True, collate_fn=collate_fn)
+                # Use the custom collate function for curriculum learning
+                current_loader = DataLoader(mixed_dataset, batch_size=dataloader.batch_size, shuffle=True, collate_fn=curriculum_collate_fn)
                 
                 # Debug: Check the first batch to see if data format is correct
                 if self.model_type == "infonce":
@@ -179,13 +197,30 @@ class Trainer:
                 else:
                    chosen = max(avg_rewards, key=avg_rewards.get)
 
-                # Preserve the collate_fn from the original dataloader
-                collate_fn = getattr(dataloader, 'collate_fn', None)
+                # Create a custom collate function that ensures consistent negative counts
+                def curriculum_collate_fn(batch):
+                    anchors, positives, negatives = zip(*batch)
+                    
+                    # Find the maximum number of negatives in this batch
+                    max_negatives = max(len(neg_list) for neg_list in negatives)
+                    
+                    # Pad all negative lists to the same length
+                    padded_negatives = []
+                    for neg_list in negatives:
+                        if len(neg_list) < max_negatives:
+                            # Pad by repeating the first negative
+                            padded_neg_list = neg_list + [neg_list[0]] * (max_negatives - len(neg_list))
+                        else:
+                            padded_neg_list = neg_list
+                        padded_negatives.append(padded_neg_list)
+                    
+                    return list(anchors), list(positives), padded_negatives
+
                 current_loader = DataLoader(
                     datasets[chosen],
                     batch_size=dataloader.batch_size,
                     shuffle=True,
-                    collate_fn=collate_fn
+                    collate_fn=curriculum_collate_fn
                 )
                 curriculum_debug_info = {
                     'epoch': epoch+1,
