@@ -123,10 +123,14 @@ class Trainer:
                 ratios = get_curriculum_ratios(epoch, epochs)
 
                 total_samples = len(dataloader.dataset)
+                print(f"[DEBUG] Total samples: {total_samples}")
+                print(f"[DEBUG] Ratios: {ratios}")
                 easy_n = int(ratios["easy"] * total_samples)
+                print(f"[DEBUG] Easy samples: {easy_n}")
                 medium_n = int(ratios["medium"] * total_samples)
                 hard_n = int(ratios["hard"] * total_samples)
-
+                print(f"[DEBUG] Hard samples: {hard_n}")
+                print(f"[DEBUG] Easy loader dataset length: {len(easy_loader.dataset)}")
                 easy_idx = np.random.choice(len(easy_loader.dataset), easy_n, replace=False)
                 med_idx = np.random.choice(len(medium_loader.dataset), medium_n, replace=False)
                 hard_idx = np.random.choice(len(dataloader.dataset), hard_n, replace=False)
