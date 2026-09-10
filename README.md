@@ -53,6 +53,49 @@ Fraudsters are creating visually similar spoof accounts to impersonate trusted c
 - `utils/data.py`: Contains PyTorch dataset classes for handling contrastive and triplet data formats.
 - `utils/evals.py`: Provides plotting utilities and threshold optimization functions for model evaluation.
 
+---
+
+## 🔍 Split Integrity / Data Leakage Check
+
+`scripts/split_overlap_check.py` verifies, directly from the released split files in
+`data/processed/`, that no legitimate domain (anchor) identity is shared across the
+training, validation, and test splits, and that negative sampling and hard-negative
+mining never reach outside their own split. Run it with:
+
+```bash
+python scripts/split_overlap_check.py
+```
+
+Results on the released data:
+
+| | train | validate | test |
+|---|---|---|---|
+| pairs | 976,122 | 51,380 | 256,886 |
+| unique legitimate anchors | 69,723 | 3,670 | 18,349 |
+| anchor-positive / anchor-negative | 627,507 / 348,615 | 33,030 / 18,350 | 165,141 / 91,745 |
+| negative-sampling pool | 63,081 | 3,290 | 16,560 |
+
+- **Anchor overlap across splits is exactly zero** for train/validate, train/test, and
+  validate/test. The three anchor sets sum to the 91,742 domains in their union, so the
+  splits are a strict partition of the legitimate-domain population. There are also no
+  duplicated (variant, legitimate) pairs across splits.
+- **Negatives are strictly within-split.** In every split, 100% of negative partners are
+  legitimate domains from that split's own anchor pool and 0% come from either other split.
+- **Hard-negative mining uses training identities only.** Across all nine mined-negative
+  training sets (triplet / InfoNCE / SupCon at easy, medium, and hard difficulty), 100% of
+  mined negatives are training-split identities and 0.000000% are validation or test
+  identities.
+- One incidental effect is reported for completeness: a small number of generated spoof
+  strings coincide as character strings with a legitimate domain in another split
+  (233 of 976,122 training rows, 0.024%). These are all very short domains
+  (median length 3, e.g. `sf`, `aw`, `kbc`), where the space of visually confusable strings
+  is small. This is string-level coincidence, not reuse of an identity across splits.
+
+This script was added to answer a Round 1 reviewer comment on the paper
+*"Multi-Signal Learning Framework for Robust Detection of Visually Deceptive Text"*
+asking for the overlap of anchor/domain identities across the three splits and for
+clarification that hard-negative mining draws only on training identities.
+
 ## 📦 Installation
 
 We recommend using a Python 3.10 virtual environment.
