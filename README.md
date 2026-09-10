@@ -85,11 +85,14 @@ Results on the released data:
   training sets (triplet / InfoNCE / SupCon at easy, medium, and hard difficulty), 100% of
   mined negatives are training-split identities and 0.000000% are validation or test
   identities.
-- One incidental effect is reported for completeness: a small number of generated spoof
-  strings coincide as character strings with a legitimate domain in another split
-  (233 of 976,122 training rows, 0.024%). These are all very short domains
-  (median length 3, e.g. `sf`, `aw`, `kbc`), where the space of visually confusable strings
-  is small. This is string-level coincidence, not reuse of an identity across splits.
+- One incidental effect is reported for completeness. In 212 cases a training-split spoof
+  variant coincides as a character string with a legitimate domain in the validation or test
+  split, because that domain is itself within spoofing distance of a *different* legitimate
+  domain. For example, `iboats` appears in training as the spoof member of the pair
+  (`boats`, `iboats`) and in test as the legitimate anchor of its own family of 14 spoof
+  pairs — both labels are correct. This affects 233 of 976,122 training rows (0.024%), each
+  colliding string appearing in a single training row, and it reuses no anchor identity
+  across splits: the anchor-level intersections above remain exactly zero.
 
 This script was added to answer a Round 1 reviewer comment on the paper
 *"Multi-Signal Learning Framework for Robust Detection of Visually Deceptive Text"*
