@@ -1,0 +1,77 @@
+{
+  "seed": 42,
+  "published": 0.945,
+  "rows": [
+    {
+      "budget": 5,
+      "val_auc": 0.9701170639192676,
+      "selected_epoch": 5,
+      "test_auc_diagnostic": 0.9407898411624565,
+      "minutes": 1.15
+    },
+    {
+      "budget": 10,
+      "val_auc": 0.9714730741848918,
+      "selected_epoch": 10,
+      "test_auc_diagnostic": 0.9433202140162589,
+      "minutes": 2.31
+    },
+    {
+      "budget": 15,
+      "val_auc": 0.971756362187459,
+      "selected_epoch": 15,
+      "test_auc_diagnostic": 0.9442369913504807,
+      "minutes": 3.44
+    },
+    {
+      "budget": 20,
+      "val_auc": 0.9726223200607821,
+      "selected_epoch": 10,
+      "test_auc_diagnostic": 0.9453132691905037,
+      "minutes": 4.73
+    },
+    {
+      "budget": 30,
+      "val_auc": 0.9731514154830758,
+      "selected_epoch": 15,
+      "test_auc_diagnostic": 0.9467318637136903,
+      "minutes": 6.95
+    },
+    {
+      "budget": 40,
+      "val_auc": 0.9733779760947235,
+      "selected_epoch": 20,
+      "test_auc_diagnostic": 0.9471623016591398,
+      "minutes": 37.01
+    },
+    {
+      "budget": 50,
+      "val_auc": 0.9713586187439212,
+      "selected_epoch": 25,
+      "test_auc_diagnostic": 0.944543165962354,
+      "minutes": 41.58
+    },
+    {
+      "budget": 60,
+      "val_auc": 0.9693212346797272,
+      "selected_epoch": 30,
+      "test_auc_diagnostic": 0.942975826262685,
+      "minutes": 14.68
+    }
+  ],
+  "validation_selected": {
+    "budget": 40,
+    "val_auc": 0.9733779760947235,
+    "selected_epoch": 20,
+    "test_auc_diagnostic": 0.9471623016591398,
+    "minutes": 37.01
+  },
+  "diagnostic_best_test": {
+    "budget": 40,
+    "val_auc": 0.9733779760947235,
+    "selected_epoch": 20,
+    "test_auc_diagnostic": 0.9471623016591398,
+    "minutes": 37.01
+  },
+  "total_minutes": 111.85
+}

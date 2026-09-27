@@ -4,3 +4,8 @@ __pycache__/
 *.pyo
 *.egg-info/
 .DS_Store
+# VA-TE round-2 refit: caches and intermediate checkpoints
+colab/vate_cache/
+colab/vate_out/head_b*.pt
+colab/vate_out/retrained_head_seed*.pt
+colab/vate_out/test_scores.npz

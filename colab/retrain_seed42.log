@@ -1,0 +1,20 @@
+device mps | seed 42 | epochs 5
+  curriculum [100000, 100000, 100000] | val 51,380 | test 256,886
+  resident embeddings (432676, 768) (1.33 GB)
+  head parameters: 1,181,184
+  epoch 1/5  ratios e/m/h 1.000/0.000/0.000  loss 0.00870
+  epoch 2/5  ratios e/m/h 0.724/0.257/0.019  loss 0.00851
+  epoch 3/5  ratios e/m/h 0.393/0.469/0.138  loss 0.01105  | val ROC-AUC 0.9692
+  epoch 4/5  ratios e/m/h 0.138/0.469/0.393  loss 0.01205
+  epoch 5/5  ratios e/m/h 0.019/0.257/0.724  loss 0.01144  | val ROC-AUC 0.9701
+
+  selected epoch 5 on validation ROC-AUC 0.9701
+
+================================================================
+  VA-TE TEST ROC-AUC : 0.9408
+  published           : 0.9450
+  delta               : -0.0042   (gate tolerance +/-0.002)
+  GATE                : MISS
+================================================================
+
+  saved head + json to /Users/sashajh2/itau-group2/colab/vate_out

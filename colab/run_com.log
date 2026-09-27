@@ -1,0 +1,30 @@
+device: mps
+  head: head_b40_seed42.pt
+  train     n=976,122  spoof=0.6429  .com=1.00
+  validate  n= 51,380  spoof=0.6429  .com=1.00
+  test      n=256,886  spoof=0.6429  .com=1.00
+  907,143 retained strings, cache verified
+  head parameters: 1,181,184
+projecting:   0%|          | 0/56 [00:00<?, ?it/s]/Users/sashajh2/itau-group2/colab/run_com.py:74: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /Users/runner/work/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:219.)
+  blk = torch.from_numpy(np.ascontiguousarray(RAW[i:i + 16384])).to(DEVICE)
+projecting:   2%|▏         | 1/56 [00:00<00:46,  1.19it/s]projecting:   5%|▌         | 3/56 [00:00<00:14,  3.76it/s]projecting:   9%|▉         | 5/56 [00:01<00:08,  6.30it/s]projecting:  12%|█▎        | 7/56 [00:01<00:05,  8.35it/s]projecting:  16%|█▌        | 9/56 [00:01<00:04, 10.11it/s]projecting:  20%|█▉        | 11/56 [00:01<00:03, 11.26it/s]projecting:  23%|██▎       | 13/56 [00:01<00:03, 11.63it/s]projecting:  27%|██▋       | 15/56 [00:01<00:03, 11.88it/s]projecting:  30%|███       | 17/56 [00:01<00:03, 12.18it/s]projecting:  34%|███▍      | 19/56 [00:02<00:03, 12.13it/s]projecting:  38%|███▊      | 21/56 [00:02<00:02, 12.31it/s]projecting:  41%|████      | 23/56 [00:02<00:02, 12.49it/s]projecting:  45%|████▍     | 25/56 [00:02<00:02, 12.08it/s]projecting:  48%|████▊     | 27/56 [00:02<00:02, 10.79it/s]projecting:  52%|█████▏    | 29/56 [00:03<00:02,  9.47it/s]projecting:  55%|█████▌    | 31/56 [00:03<00:02,  9.39it/s]projecting:  59%|█████▉    | 33/56 [00:03<00:02,  9.95it/s]projecting:  62%|██████▎   | 35/56 [00:03<00:02, 10.45it/s]projecting:  66%|██████▌   | 37/56 [00:03<00:01, 10.73it/s]projecting:  70%|██████▉   | 39/56 [00:04<00:02,  7.55it/s]projecting:  71%|███████▏  | 40/56 [00:04<00:02,  6.04it/s]projecting:  75%|███████▌  | 42/56 [00:04<00:01,  7.42it/s]projecting:  79%|███████▊  | 44/56 [00:04<00:01,  8.56it/s]projecting:  82%|████████▏ | 46/56 [00:05<00:01,  8.70it/s]projecting:  84%|████████▍ | 47/56 [00:05<00:01,  8.80it/s]projecting:  86%|████████▌ | 48/56 [00:05<00:00,  8.95it/s]projecting:  88%|████████▊ | 49/56 [00:05<00:00,  7.67it/s]projecting:  89%|████████▉ | 50/56 [00:05<00:00,  6.66it/s]projecting:  91%|█████████ | 51/56 [00:10<00:05,  1.19s/it]projecting:  93%|█████████▎| 52/56 [00:12<00:06,  1.57s/it]projecting:  95%|█████████▍| 53/56 [00:12<00:03,  1.18s/it]projecting:  98%|█████████▊| 55/56 [00:12<00:00,  1.43it/s]projecting: 100%|██████████| 56/56 [00:13<00:00,  1.62it/s]projecting: 100%|██████████| 56/56 [00:13<00:00,  4.23it/s]
+  train     features done
+  validate  features done
+  test      features done
+
+honest protocol, .com retained: fit on train, threshold on validation, test once
+   Levenshtein                      ROC-AUC 0.8137  acc 0.8170
+   Token Set Ratio                  ROC-AUC 0.8425  acc 0.7823
+   Levenshtein + Token Set Ratio    ROC-AUC 0.8913  acc 0.8214
+   VA-TE                            ROC-AUC 0.9314  acc 0.8667
+   VA-TE + String                   ROC-AUC 0.9560  acc 0.8975
+
+======================================================================
+  Table 11, .com-retained row (paste order: Lev, TokenSet, Lev+TS, VA-TE, VA-TE+String)
+  0.8137 & 0.8425 & 0.8913 & 0.9314 & 0.9560
+
+  Table 6, VA-TE row  (AUC, Acc %, Prec, Rec)
+  VA-TE (SigLIP + trained head) & 0.931 & 86.67 & 0.892 & 0.902 \\
+======================================================================
+
+  saved -> /Users/sashajh2/itau-group2/colab/vate_out/com_retained.json

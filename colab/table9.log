@@ -1,0 +1,23 @@
+  train ready
+  validate ready
+  test ready
+  tuned weights = [0.4, 0.1, 0.5] (validation AUC 0.9816)
+  fitted Decision tree (depth 3)
+  fitted Logistic regression
+  fitted Decision tree (depth 6)
+  fitted Random forest (100, depth 6)
+  fitted Gradient boosting (100, depth 6, lr 0.1)
+
+Table 8 rows, honest protocol — paste into template.tex
+
+Weighted average (equal weights) & 0.9244 & 0.9573 & 0.8620 & 0.8842 & 0.9037 & 0.8939 & 0.3985 \\
+Decision tree (depth 3) & 0.9360 & 0.9449 & 0.8971 & 0.8817 & 0.9701 & 0.9238 & 0.2344 \\
+Weighted average (tuned on validation) & 0.9496 & 0.9673 & 0.8917 & 0.9010 & 0.9341 & 0.9173 & 0.2205 \\
+Logistic regression & 0.9495 & 0.9656 & 0.8944 & 0.9076 & 0.9304 & 0.9189 & 0.2083 \\
+Decision tree (depth 6) & 0.9549 & 0.9650 & 0.9006 & 0.9229 & 0.9225 & 0.9227 & 0.1897 \\
+Random forest (100, depth 6) & 0.9636 & 0.9765 & 0.8990 & 0.9339 & 0.9072 & 0.9203 & 0.1785 \\
+Gradient boosting (100, depth 6, lr 0.1) & 0.9639 & 0.9757 & 0.9084 & 0.9179 & 0.9417 & 0.9297 & 0.1664 \\
+
+Check before pasting: the paper bolds the gradient-boosting row as best. If some
+other combiner now leads, move the \textbf{} and revise the surrounding prose at
+line 868, which currently reads '0.9648--0.9715' for the non-linear range.

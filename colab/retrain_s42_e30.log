@@ -1,0 +1,9 @@
+device mps | seed 42 | epochs 30
+  curriculum [100000, 100000, 100000] | val 51,380 | test 256,886
+  resident embeddings (432676, 768) (1.33 GB)
+  head parameters: 1,181,184
+  epoch 1/30  ratios e/m/h 1.000/0.000/0.000  loss 0.00870
+  epoch 2/30  ratios e/m/h 0.964/0.036/0.000  loss 0.00558
+  epoch 3/30  ratios e/m/h 0.923/0.076/0.001  loss 0.00528
+  epoch 4/30  ratios e/m/h 0.878/0.120/0.002  loss 0.00541
+  epoch 5/30  ratios e/m/h 0.829/0.165/0.006  loss 0.00583
